@@ -31,7 +31,7 @@ func (boarders *CandleBorders) NKeys() int {
 // MarketCandleBorders получает таблицу с диапазонами доступных свечек для данного рынка и тикера.
 // Описание запроса - https://iss.moex.com/iss/reference/156
 func (iss ISSClient) MarketCandleBorders(ctx context.Context, engine string, market string, security string) (table []CandleBorders, err error) {
-	query := ISSQuery{
+	query := issQuery{
 		engine:   engine,
 		market:   market,
 		security: security,
@@ -94,21 +94,21 @@ func (candle *Candle) NKeys() int {
 
 // Доступные интервалы свечек
 const (
-	IntervalMin1   = 1
-	IntervalMin10  = 10
-	IntervalHour   = 60
-	IntervalDay    = 24
-	IntervalWeek   = 7
-	IntervalMonth  = 31
-	IntervalQuoter = 4
+	IntervalMin1   = "1"
+	IntervalMin10  = "10"
+	IntervalHour   = "60"
+	IntervalDay    = "24"
+	IntervalWeek   = "7"
+	IntervalMonth  = "31"
+	IntervalQuoter = "4"
 )
 
 // MarketCandles свечки данного инструмента и интервала свечки для основного режима данного рынка.
 //
 // По сравнению со свечками исторические котировки обычно доступны за больший период, но имеются только дневные данные.
 // Описание запроса - https://iss.moex.com/iss/reference/155
-func (iss ISSClient) MarketCandles(ctx context.Context, engine string, market string, security string, from string, till string, interval int) (table []Candle, err error) {
-	query := ISSQuery{
+func (iss ISSClient) MarketCandles(ctx context.Context, engine string, market string, security string, from string, till string, interval string) (table []Candle, err error) {
+	query := issQuery{
 		engine:    engine,
 		market:    market,
 		security:  security,

@@ -18,7 +18,7 @@ type ISSClient struct {
 	Client *http.Client
 }
 
-func (iss *ISSClient) get(ctx context.Context, query ISSQuery, rows chan json.RawMessage, errors chan error) {
+func (iss *ISSClient) get(ctx context.Context, query issQuery, rows chan json.RawMessage, errors chan error) {
 
 	defer close(rows)
 	defer close(errors)
@@ -72,7 +72,7 @@ func (iss *ISSClient) get(ctx context.Context, query ISSQuery, rows chan json.Ra
 
 }
 
-func (iss *ISSClient) getRawTables(ctx context.Context, query ISSQuery, start int) (rawTable map[string]json.RawMessage, err error) {
+func (iss *ISSClient) getRawTables(ctx context.Context, query issQuery, start int) (rawTable map[string]json.RawMessage, err error) {
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, query.String(start), nil)
 	if err != nil {
@@ -115,7 +115,7 @@ func (iss *ISSClient) getRawTables(ctx context.Context, query ISSQuery, start in
 	return
 }
 
-func (iss *ISSClient) getAll(ctx context.Context, query ISSQuery) (rows chan json.RawMessage, errors chan error) {
+func (iss *ISSClient) getAll(ctx context.Context, query issQuery) (rows chan json.RawMessage, errors chan error) {
 	rows = make(chan json.RawMessage)
 	errors = make(chan error, 1)
 

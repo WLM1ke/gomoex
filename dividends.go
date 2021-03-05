@@ -38,7 +38,7 @@ func (dividend *Dividend) NKeys() int {
 // Запрос не отражен в официальном справочнике. По многим инструментам дивиденды отсутствуют или отражены не полностью.
 // Корректная информация содержится в основном только по наиболее ликвидным позициям.
 func (iss ISSClient) SecurityDividends(ctx context.Context, security string) (table []Dividend, err error) {
-	query := ISSQuery{
+	query := issQuery{
 		security: security,
 		object:   "dividends",
 		table:    "dividends",

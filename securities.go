@@ -30,7 +30,7 @@ func (security *Security) NKeys() int {
 // BoardSecurities получает таблицу с торгуемыми бумагами в данном режиме торгов.
 // Описание запроса - https://iss.moex.com/iss/reference/32
 func (iss ISSClient) BoardSecurities(ctx context.Context, engine string, market string, board string) (table []Security, err error) {
-	query := ISSQuery{
+	query := issQuery{
 		engine: engine,
 		market: market,
 		board:  board,
@@ -78,7 +78,7 @@ func (result *SearchResult) NKeys() int {
 // должно быть длиной не менее трёх букв.
 // Описание запроса - https://iss.moex.com/iss/reference/5
 func (iss ISSClient) FindSecurity(ctx context.Context, q string) (table []SearchResult, err error) {
-	query := ISSQuery{
+	query := issQuery{
 		object:    "securities",
 		table:     "securities",
 		q:         q,
