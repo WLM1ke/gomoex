@@ -2,45 +2,56 @@ package gomoex
 
 import (
 	"strconv"
+	"strings"
 )
 
+// ISSQuery содержит описание запроса к ISS и позволет сформировать необходимый для его осуществления URL.
+// Официальный справочник запросов https://iss.moex.com/iss/reference/
+// Официальный справочник разработчика https://fs.moex.com/files/6523
 type ISSQuery struct {
-	history   bool
-	engine    string
-	market    string
-	board     string
-	security  string
-	endPoint  string
-	table     string
+	// Нужен ли префикс history.
+	history bool
+	// Значение плейсхолдера engine. Для пустой строки не добавляется в запрос.
+	engine string
+	// Значение плейсхолдера market. Для пустой строки не добавляется в запрос.
+	market string
+	// Значение плейсхолдера board. Для пустой строки не добавляется в запрос.
+	board string
+	// Значение плейсхолдера security. Для пустой строки не добавляется в запрос.
+	security string
+	// Запрашиваемый объект. Для пустой строки не добавляется в запрос.
+	object string
+	// Запрашиваемая таблица внутри ответа.
+	table string
+	// Будет ли ответ разбит на несколько блоков, требующих последовательной загрузки со смещением стартовой позиции.
 	multipart bool
 }
 
+// String формирует URL запроса на основании описания для заданной стартовой позиции.
+// В базовый URL добавляюется требование предоставить расширенный JSON без метаданных с таблицей курсора.
 func (query ISSQuery) String(start int) (url string) {
-	url = "https://iss.moex.com/iss"
+	urlParts := []string{"https://iss.moex.com/iss"}
 
 	if query.history {
-		url += "/history"
+		urlParts = append(urlParts, "/history")
 	}
 	if query.engine != "" {
-		url += "/engines/" + query.engine
+		urlParts = append(urlParts, "/engines/", query.engine)
 	}
 	if query.market != "" {
-		url += "/markets/" + query.market
+		urlParts = append(urlParts, "/markets/", query.market)
 	}
 	if query.board != "" {
-		url += "/boards/" + query.board
+		urlParts = append(urlParts, "/boards/", query.board)
 	}
 	if query.security != "" {
-		url += "/securities/" + query.security
+		urlParts = append(urlParts, "/securities/", query.security)
 	}
-	if query.endPoint != "" {
-		url += "/" + query.endPoint
+	if query.object != "" {
+		urlParts = append(urlParts, "/", query.object)
 	}
-	url += ".json?iss.json=extended&iss.meta=off&iss.only=history.cursor," + query.table + "&start=" + strconv.Itoa(start)
+	urlParts = append(urlParts, ".json?iss.json=extended&iss.meta=off&iss.only=history.cursor,")
+	urlParts = append(urlParts, "iss.only=history.cursor,", query.table, "&start=", strconv.Itoa(start))
 
-	return url
-}
-
-func (query ISSQuery) Multipart() bool {
-	return query.multipart
+	return strings.Join(urlParts, "")
 }
