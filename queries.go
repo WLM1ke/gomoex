@@ -23,6 +23,8 @@ type ISSQuery struct {
 	object string
 	// Запрашиваемая таблица внутри ответа.
 	table string
+	// Интервал свечек.
+	interval int
 	// Будет ли ответ разбит на несколько блоков, требующих последовательной загрузки со смещением стартовой позиции.
 	multipart bool
 }
@@ -50,8 +52,10 @@ func (query ISSQuery) String(start int) (url string) {
 	if query.object != "" {
 		urlParts = append(urlParts, "/", query.object)
 	}
-	urlParts = append(urlParts, ".json?iss.json=extended&iss.meta=off&iss.only=history.cursor,")
-	urlParts = append(urlParts, "iss.only=history.cursor,", query.table, "&start=", strconv.Itoa(start))
+	urlParts = append(urlParts, ".json?iss.json=extended&iss.meta=off")
+	urlParts = append(urlParts, "&iss.only=history.cursor,", query.table)
+	urlParts = append(urlParts, "&interval=", strconv.Itoa(query.interval))
+	urlParts = append(urlParts, "&start=", strconv.Itoa(start))
 
 	return strings.Join(urlParts, "")
 }

@@ -2,11 +2,11 @@ package gomoex
 
 import (
 	"context"
-	"fmt"
 	"github.com/francoispqt/gojay"
 	"time"
 )
 
+// Dates содержит информацию о диапазоне доступных торговых дат.
 type Dates struct {
 	From time.Time
 	Till time.Time
@@ -42,7 +42,6 @@ func (iss ISSClient) MarketDates(ctx context.Context, engine string, market stri
 		table = append(table, Dates{})
 		err = gojay.Unmarshal(rawRow, &table[len(table)-1])
 		if err != nil {
-			fmt.Println(err)
 			return nil, err
 		}
 	}
@@ -53,8 +52,8 @@ func (iss ISSClient) MarketDates(ctx context.Context, engine string, market stri
 	return table, nil
 }
 
-// Quotes представляет исторические дневные котировки в формате OCHL + объем торгов в деньгах и штуках.
-type Quotes struct {
+// Quote представляет исторические дневные котировки в формате OCHL + объем торгов в деньгах и штуках.
+type Quote struct {
 	Date   time.Time
 	Open   float64
 	Close  float64
@@ -64,7 +63,7 @@ type Quotes struct {
 	Volume int
 }
 
-func (quotes *Quotes) UnmarshalJSONObject(dec *gojay.Decoder, key string) error {
+func (quotes *Quote) UnmarshalJSONObject(dec *gojay.Decoder, key string) error {
 	switch key {
 	case "TRADEDATE":
 		return dec.Time(&quotes.Date, "2006-01-02")
@@ -83,7 +82,7 @@ func (quotes *Quotes) UnmarshalJSONObject(dec *gojay.Decoder, key string) error 
 	}
 	return nil
 }
-func (quotes *Quotes) NKeys() int {
+func (quotes *Quote) NKeys() int {
 	return 7
 }
 
@@ -91,7 +90,7 @@ func (quotes *Quotes) NKeys() int {
 //
 // По сравнению со свечками обычно доступны за больший период, но имеются только дневные данные.
 // Описание запроса - https://iss.moex.com/iss/reference/63
-func (iss ISSClient) MarketHistory(ctx context.Context, engine string, market string, security string) (table []Quotes, err error) {
+func (iss ISSClient) MarketHistory(ctx context.Context, engine string, market string, security string) (table []Quote, err error) {
 	query := ISSQuery{
 		history:   true,
 		engine:    engine,
@@ -104,7 +103,7 @@ func (iss ISSClient) MarketHistory(ctx context.Context, engine string, market st
 	rows, errors := iss.getAll(ctx, query)
 
 	for rawRow := range rows {
-		table = append(table, Quotes{})
+		table = append(table, Quote{})
 		err = gojay.Unmarshal(rawRow, &table[len(table)-1])
 		if err != nil {
 			return nil, err
