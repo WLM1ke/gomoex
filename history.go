@@ -25,7 +25,7 @@ func (date *Dates) NKeys() int {
 	return 2
 }
 
-// MarketDates получает таблицу с биапазоном торговых дат для данного рынка.
+// MarketDates получает таблицу с диапазоном торговых дат для данного рынка.
 // Описание запроса - https://iss.moex.com/iss/reference/83
 func (iss ISSClient) MarketDates(ctx context.Context, engine string, market string) (table []Dates, err error) {
 	query := ISSQuery{
@@ -53,26 +53,43 @@ func (iss ISSClient) MarketDates(ctx context.Context, engine string, market stri
 	return table, nil
 }
 
+// Quotes представляет исторические дневные котировки в формате OCHL + объем торгов в деньгах и штуках.
 type Quotes struct {
-	Date  time.Time
-	Close float64
+	Date   time.Time
+	Open   float64
+	Close  float64
+	High   float64
+	Low    float64
+	Value  float64
+	Volume int
 }
 
 func (quotes *Quotes) UnmarshalJSONObject(dec *gojay.Decoder, key string) error {
 	switch key {
 	case "TRADEDATE":
 		return dec.Time(&quotes.Date, "2006-01-02")
+	case "OPEN":
+		return dec.Float(&quotes.Open)
 	case "CLOSE":
 		return dec.Float(&quotes.Close)
+	case "HIGH":
+		return dec.Float(&quotes.High)
+	case "LOW":
+		return dec.Float(&quotes.Low)
+	case "VALUE":
+		return dec.Float(&quotes.Value)
+	case "VOLUME":
+		return dec.Int(&quotes.Volume)
 	}
 	return nil
 }
 func (quotes *Quotes) NKeys() int {
-	return 2
+	return 7
 }
 
-// MarketHistory исторические котировки для данного инструмента и всех торговоых режимов для данного рынка.
-// По сравнению со свечками имеют доступны за больший период, но имеются только дневные данные.
+// MarketHistory исторические котировки данного инструмента для всех торговых режимов для данного рынка.
+//
+// По сравнению со свечками обычно доступны за больший период, но имеются только дневные данные.
 // Описание запроса - https://iss.moex.com/iss/reference/63
 func (iss ISSClient) MarketHistory(ctx context.Context, engine string, market string, security string) (table []Quotes, err error) {
 	query := ISSQuery{
