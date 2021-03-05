@@ -23,6 +23,10 @@ type ISSQuery struct {
 	object string
 	// Запрашиваемая таблица внутри ответа.
 	table string
+	// Дата, с которой выводить данные в формате ГГГГ-ММ-ДД.
+	from string
+	// Дата, до которой выводить данные в формате ГГГГ-ММ-ДД.
+	till string
 	// Интервал свечек.
 	interval int
 	// Поисковый запрос о ценной бумаге.
@@ -56,6 +60,8 @@ func (query ISSQuery) String(start int) (url string) {
 	}
 	urlParts = append(urlParts, ".json?iss.json=extended&iss.meta=off")
 	urlParts = append(urlParts, "&iss.only=history.cursor,", query.table)
+	urlParts = append(urlParts, "&from=", query.from)
+	urlParts = append(urlParts, "&till=", query.till)
 	urlParts = append(urlParts, "&interval=", strconv.Itoa(query.interval))
 	urlParts = append(urlParts, "&q=", query.q)
 	urlParts = append(urlParts, "&start=", strconv.Itoa(start))

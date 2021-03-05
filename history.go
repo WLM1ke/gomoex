@@ -90,13 +90,15 @@ func (quotes *Quote) NKeys() int {
 //
 // По сравнению со свечками обычно доступны за больший период, но имеются только дневные данные.
 // Описание запроса - https://iss.moex.com/iss/reference/63
-func (iss ISSClient) MarketHistory(ctx context.Context, engine string, market string, security string) (table []Quote, err error) {
+func (iss ISSClient) MarketHistory(ctx context.Context, engine string, market string, security string, from string, till string) (table []Quote, err error) {
 	query := ISSQuery{
 		history:   true,
 		engine:    engine,
 		market:    market,
 		security:  security,
 		table:     "history",
+		from:      from,
+		till:      till,
 		multipart: true,
 	}
 

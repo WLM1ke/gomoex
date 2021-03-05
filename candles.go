@@ -107,13 +107,15 @@ const (
 //
 // По сравнению со свечками исторические котировки обычно доступны за больший период, но имеются только дневные данные.
 // Описание запроса - https://iss.moex.com/iss/reference/155
-func (iss ISSClient) MarketCandles(ctx context.Context, engine string, market string, security string, interval int) (table []Candle, err error) {
+func (iss ISSClient) MarketCandles(ctx context.Context, engine string, market string, security string, from string, till string, interval int) (table []Candle, err error) {
 	query := ISSQuery{
 		engine:    engine,
 		market:    market,
 		security:  security,
 		object:    "candles",
 		table:     "candles",
+		from:      from,
+		till:      till,
 		interval:  interval,
 		multipart: true,
 	}
