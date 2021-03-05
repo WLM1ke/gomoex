@@ -25,6 +25,8 @@ type ISSQuery struct {
 	table string
 	// Интервал свечек.
 	interval int
+	// Поисковый запрос о ценной бумаге.
+	q string
 	// Будет ли ответ разбит на несколько блоков, требующих последовательной загрузки со смещением стартовой позиции.
 	multipart bool
 }
@@ -55,6 +57,7 @@ func (query ISSQuery) String(start int) (url string) {
 	urlParts = append(urlParts, ".json?iss.json=extended&iss.meta=off")
 	urlParts = append(urlParts, "&iss.only=history.cursor,", query.table)
 	urlParts = append(urlParts, "&interval=", strconv.Itoa(query.interval))
+	urlParts = append(urlParts, "&q=", query.q)
 	urlParts = append(urlParts, "&start=", strconv.Itoa(start))
 
 	return strings.Join(urlParts, "")
