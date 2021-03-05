@@ -59,13 +59,25 @@ func (query issQuery) String(start int) (url string) {
 	if query.object != "" {
 		urlParts = append(urlParts, "/", query.object)
 	}
+
 	urlParts = append(urlParts, ".json?iss.json=extended&iss.meta=off")
 	urlParts = append(urlParts, "&iss.only=history.cursor,", query.table)
-	urlParts = append(urlParts, "&from=", query.from)
-	urlParts = append(urlParts, "&till=", query.till)
-	urlParts = append(urlParts, "&interval=", query.interval)
-	urlParts = append(urlParts, "&q=", query.q)
-	urlParts = append(urlParts, "&start=", strconv.Itoa(start))
+
+	if query.from != "" {
+		urlParts = append(urlParts, "&from=", query.from)
+	}
+	if query.till != "" {
+		urlParts = append(urlParts, "&till=", query.till)
+	}
+	if query.interval != "" {
+		urlParts = append(urlParts, "&interval=", query.interval)
+	}
+	if query.q != "" {
+		urlParts = append(urlParts, "&q=", query.q)
+	}
+	if start != 0 {
+		urlParts = append(urlParts, "&start=", strconv.Itoa(start))
+	}
 
 	return strings.Join(urlParts, "")
 }
