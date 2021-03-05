@@ -47,7 +47,7 @@ func (iss *ISSClient) get(ctx context.Context, query ISSQuery, rows chan json.Ra
 			rows <- rawRow
 		}
 
-		if !query.Multipart() {
+		if !query.multipart {
 			return
 		}
 
@@ -112,7 +112,7 @@ func (iss *ISSClient) getRawTables(ctx context.Context, query ISSQuery, start in
 		return nil, err
 	}
 
-	return rawTable, nil
+	return
 }
 
 func (iss *ISSClient) getAll(ctx context.Context, query ISSQuery) (rows chan json.RawMessage, errors chan error) {
@@ -121,5 +121,5 @@ func (iss *ISSClient) getAll(ctx context.Context, query ISSQuery) (rows chan jso
 
 	go iss.get(ctx, query, rows, errors)
 
-	return rows, errors
+	return
 }

@@ -2,7 +2,9 @@ package gomoex
 
 import (
 	"context"
-	"encoding/json"
+	"fmt"
+	"github.com/francoispqt/gojay"
+	"time"
 )
 
 // Ключевые плейсхолдеры запросов - полный справочник https://iss.moex.com/iss/index.json
@@ -33,8 +35,21 @@ const (
 )
 
 type Dates struct {
-	From string `json:"from"`
-	Till string `json:"till"`
+	From time.Time
+	Till time.Time
+}
+
+func (date *Dates) UnmarshalJSONObject(dec *gojay.Decoder, key string) error {
+	switch key {
+	case "from":
+		return dec.Time(&date.From, "2006-01-02")
+	case "till":
+		return dec.Time(&date.Till, "2006-01-02")
+	}
+	return nil
+}
+func (date *Dates) NKeys() int {
+	return 2
 }
 
 // MarketDates получает таблицу с биапазоном торговых дат для данного рынка.
@@ -52,23 +67,39 @@ func (iss ISSClient) MarketDates(ctx context.Context, engine string, market stri
 
 	for rawRow := range rows {
 		table = append(table, Dates{})
-		err = json.Unmarshal(rawRow, &table[len(table)-1])
+		err = gojay.Unmarshal(rawRow, &table[len(table)-1])
 		if err != nil {
+			fmt.Println(err)
 			return nil, err
 		}
 	}
 	if err = <-errors; err != nil {
+
 		return nil, err
 	}
 	return table, nil
 }
 
 type Quotes struct {
-	Date  string  `json:"TRADEDATE"`
-	Close float64 `json:"CLOSE"`
+	Date  time.Time
+	Close float64
+}
+
+func (quotes *Quotes) UnmarshalJSONObject(dec *gojay.Decoder, key string) error {
+	switch key {
+	case "TRADEDATE":
+		return dec.Time(&quotes.Date, "2006-01-02")
+	case "CLOSE":
+		return dec.Float(&quotes.Close)
+	}
+	return nil
+}
+func (quotes *Quotes) NKeys() int {
+	return 2
 }
 
 // MarketHistory исторические котировки для данного инструмента и всех торговоых режимов для данного рынка.
+// По сравнению со свечками имеют доступны за больший период, но имеются только дневные данные.
 // Описание запроса - https://iss.moex.com/iss/reference/63
 func (iss ISSClient) MarketHistory(ctx context.Context, engine string, market string, security string) (table []Quotes, err error) {
 	query := ISSQuery{
@@ -84,7 +115,7 @@ func (iss ISSClient) MarketHistory(ctx context.Context, engine string, market st
 
 	for rawRow := range rows {
 		table = append(table, Quotes{})
-		err = json.Unmarshal(rawRow, &table[len(table)-1])
+		err = gojay.Unmarshal(rawRow, &table[len(table)-1])
 		if err != nil {
 			return nil, err
 		}
