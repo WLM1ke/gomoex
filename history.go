@@ -7,33 +7,6 @@ import (
 	"time"
 )
 
-// Ключевые плейсхолдеры запросов - полный справочник https://iss.moex.com/iss/index.json
-const (
-	EngineStock    = "stock"    // Фондовый рынок и рынок депозитов
-	EngineCurrency = "currency" // Валютный рынок
-	EngineFutures  = "futures"  // Срочный рынок
-
-	MarketIndex         = "index"         // Индексы фондового рынка
-	MarketShares        = "shares"        // Рынок акций
-	MarketBonds         = "bonds"         // Рынок облигаций
-	MarketForeignShares = "foreignshares" // Иностранные ц.б.
-
-	MarketSelt    = "selt"    // Биржевые сделки с ЦК
-	MarketFutures = "futures" //Поставочные фьючерсы
-
-	MarketFORTS   = "forts"   // ФОРТС
-	MarketOptions = "options" //Опционы ФОРТС
-
-	BoardTQBR = "TQBR" // Т+: Акции и ДР - безадрес.
-	BoardTQTF = "TQTF" // Т+: ETF - безадрес.
-)
-
-// Ключевые таблицы
-const (
-	dates   = "dates"
-	history = "history"
-)
-
 type Dates struct {
 	From time.Time
 	Till time.Time
@@ -59,8 +32,8 @@ func (iss ISSClient) MarketDates(ctx context.Context, engine string, market stri
 		history: true,
 		engine:  engine,
 		market:  market,
-		object:  dates,
-		table:   dates,
+		object:  "dates",
+		table:   "dates",
 	}
 
 	rows, errors := iss.getAll(ctx, query)
@@ -107,7 +80,7 @@ func (iss ISSClient) MarketHistory(ctx context.Context, engine string, market st
 		engine:    engine,
 		market:    market,
 		security:  security,
-		table:     history,
+		table:     "history",
 		multipart: true,
 	}
 
