@@ -9,14 +9,13 @@ const (
 	MarketIndex         = "index"         // Индексы фондового рынка
 	MarketShares        = "shares"        // Рынок акций
 	MarketBonds         = "bonds"         // Рынок облигаций
-	MarketForeignShares = "foreignshares" // Иностранные ц.б.
+	MarketForeignShares = "foreignshares" // Иностранные ценные бумаги
+	MarketSelt          = "selt"          // Биржевые сделки с ЦК
+	MarketFutures       = "futures"       // Поставочные фьючерсы
+	MarketFORTS         = "forts"         // ФОРТС
+	MarketOptions       = "options"       // Опционы ФОРТС
 
-	MarketSelt    = "selt"    // Биржевые сделки с ЦК
-	MarketFutures = "futures" //Поставочные фьючерсы
-
-	MarketFORTS   = "forts"   // ФОРТС
-	MarketOptions = "options" //Опционы ФОРТС
-
-	BoardTQBR = "TQBR" // Т+: Акции и ДР - безадрес.
-	BoardTQTF = "TQTF" // Т+: ETF - безадрес.
+	BoardTQBR = "TQBR" // Т+: Акции и ДР — безадресные сделки
+	BoardTQTF = "TQTF" // Т+: ETF — безадресные сделки
+	BoardFQBR = "FQBR" // Т+ Иностранные Акции и ДР — безадресные сделки
 )
