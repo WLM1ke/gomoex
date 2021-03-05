@@ -1,6 +1,6 @@
 package gomoex
 
-// Ключевые плейсхолдеры запросов - полный справочник https://iss.moex.com/iss/index.json
+// Ключевые плейсхолдеры запросов — полный справочник https://iss.moex.com/iss/index.json
 const (
 	EngineStock    = "stock"    // Фондовый рынок и рынок депозитов
 	EngineCurrency = "currency" // Валютный рынок
