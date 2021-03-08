@@ -2,7 +2,7 @@ package gomoex
 
 import (
 	"context"
-	"github.com/francoispqt/gojay"
+	"github.com/valyala/fastjson"
 	"time"
 )
 
@@ -15,23 +15,21 @@ type Dividend struct {
 	Currency string
 }
 
-func (dividend *Dividend) UnmarshalJSONObject(dec *gojay.Decoder, key string) error {
-	switch key {
-	case "secid":
-		return dec.String(&dividend.Ticker)
-	case "isin":
-		return dec.String(&dividend.ISIN)
-	case "registryclosedate":
-		return dec.Time(&dividend.Date, "2006-01-02")
-	case "value":
-		return dec.Float(&dividend.Dividend)
-	case "currencyid":
-		return dec.String(&dividend.Currency)
+func dividendConverter(row *fastjson.Value) (interface{}, error) {
+	div := Dividend{}
+	var err error
+	div.Ticker = string(row.GetStringBytes("secid"))
+	div.ISIN = string(row.GetStringBytes("isin"))
+	div.Date, err = time.Parse("2006-01-02", string(row.GetStringBytes("registryclosedate")))
+	if err != nil {
+		return nil, err
 	}
-	return nil
-}
-func (dividend *Dividend) NKeys() int {
-	return 5
+	div.Dividend, err = row.Get("value").Float64()
+	if err != nil {
+		return div, err
+	}
+	div.Currency = string(row.GetStringBytes("currencyid"))
+	return div, nil
 }
 
 // SecurityDividends получает таблицу с дивидендами.
@@ -39,19 +37,16 @@ func (dividend *Dividend) NKeys() int {
 // Корректная информация содержится в основном только по наиболее ликвидным позициям.
 func (iss ISSClient) SecurityDividends(ctx context.Context, security string) (table []Dividend, err error) {
 	query := issQuery{
-		security: security,
-		object:   "dividends",
-		table:    "dividends",
+		security:     security,
+		object:       "dividends",
+		table:        "dividends",
+		rowConverter: dividendConverter,
 	}
 
 	rows, errors := iss.getAll(ctx, query)
 
-	for rawRow := range rows {
-		table = append(table, Dividend{})
-		err = gojay.Unmarshal(rawRow, &table[len(table)-1])
-		if err != nil {
-			return nil, err
-		}
+	for div := range rows {
+		table = append(table, div.(Dividend))
 	}
 	if err = <-errors; err != nil {
 

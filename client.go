@@ -2,49 +2,58 @@ package gomoex
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"github.com/valyala/fastjson"
 	"io/ioutil"
 	"net/http"
 )
 
-type cursor struct {
-	Index    int `json:"INDEX"`
-	Total    int `json:"TOTAL"`
-	PageSize int `json:"PAGESIZE"`
-}
-
 type ISSClient struct {
 	Client *http.Client
+	pool   fastjson.ParserPool
 }
 
-func (iss *ISSClient) get(ctx context.Context, query issQuery, rows chan json.RawMessage, errors chan error) {
+func (iss *ISSClient) get(ctx context.Context, query issQuery, rows chan interface{}, errors chan error) {
 
 	defer close(rows)
 	defer close(errors)
 
+	parser := iss.pool.Get()
+	defer iss.pool.Put(parser)
+
 	blockSize := 1
 	start := -1
-
-	var rawRows []json.RawMessage
-	var cur []cursor
 
 	for blockSize != 0 {
 		start += blockSize
 
-		rawTables, err := iss.getRawTables(ctx, query, start)
+		data, err := iss.getJSON(ctx, query, start)
 		if err != nil {
 			errors <- err
 			return
 		}
 
-		err = json.Unmarshal(rawTables[query.table], &rawRows)
+		json, err := parser.ParseBytes(data)
 		if err != nil {
 			errors <- err
 			return
 		}
+
+		json = json.Get("1")
+
+		rawRows := json.GetArray(query.table)
+		if rawRows == nil {
+			errors <- err
+			return
+		}
+
 		for _, rawRow := range rawRows {
-			rows <- rawRow
+			row, err := query.rowConverter(rawRow)
+			if err != nil {
+				errors <- err
+				return
+			}
+			rows <- row
 		}
 
 		if !query.multipart {
@@ -53,26 +62,19 @@ func (iss *ISSClient) get(ctx context.Context, query issQuery, rows chan json.Ra
 
 		blockSize = len(rawRows)
 
-		curData, ok := rawTables["history.cursor"]
-		if !ok {
+		curData := json.Get("history.cursor", "0")
+		if curData == nil {
 			continue
 		}
 
-		err = json.Unmarshal(curData, &cur)
-		if err != nil {
-			errors <- err
-			return
-		}
-
-		if start+cur[0].PageSize >= cur[0].Total {
+		if start+curData.GetInt("PAGESIZE") >= curData.GetInt("TOTAL") {
 			blockSize = 0
 		}
-
 	}
 
 }
 
-func (iss *ISSClient) getRawTables(ctx context.Context, query issQuery, start int) (rawTable map[string]json.RawMessage, err error) {
+func (iss *ISSClient) getJSON(ctx context.Context, query issQuery, start int) (data []byte, err error) {
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, query.String(start), nil)
 	if err != nil {
@@ -87,7 +89,7 @@ func (iss *ISSClient) getRawTables(ctx context.Context, query issQuery, start in
 	defer func() {
 		err = resp.Body.Close()
 		if err != nil {
-			rawTable = nil
+			data = nil
 		}
 	}()
 
@@ -95,28 +97,11 @@ func (iss *ISSClient) getRawTables(ctx context.Context, query issQuery, start in
 		return nil, fmt.Errorf("bad status %s", resp.Status)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	rawData := make([]json.RawMessage, 2)
-	err = json.Unmarshal(body, &rawData)
-	if err != nil {
-		return nil, err
-	}
-
-	// Пропускаем первый элемент с информацией о кодировке
-	err = json.Unmarshal(rawData[1], &rawTable)
-	if err != nil {
-		return nil, err
-	}
-
-	return
+	return ioutil.ReadAll(resp.Body)
 }
 
-func (iss *ISSClient) getAll(ctx context.Context, query issQuery) (rows chan json.RawMessage, errors chan error) {
-	rows = make(chan json.RawMessage)
+func (iss *ISSClient) getAll(ctx context.Context, query issQuery) (rows chan interface{}, errors chan error) {
+	rows = make(chan interface{})
 	errors = make(chan error, 1)
 
 	go iss.get(ctx, query, rows, errors)

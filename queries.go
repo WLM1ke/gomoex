@@ -1,6 +1,7 @@
 package gomoex
 
 import (
+	"github.com/valyala/fastjson"
 	"strconv"
 	"strings"
 )
@@ -34,6 +35,8 @@ type issQuery struct {
 	q string
 	// Будет ли ответ разбит на несколько блоков, требующих последовательной загрузки со смещением стартовой позиции.
 	multipart bool
+	// Конвертор данных — выбирает необходимые поля и преобразует данные.
+	rowConverter func(row *fastjson.Value) (interface{}, error)
 }
 
 // String формирует URL запроса на основании описания для заданной стартовой позиции.
