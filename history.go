@@ -2,53 +2,57 @@ package gomoex
 
 import (
 	"context"
-	"github.com/francoispqt/gojay"
+	"github.com/valyala/fastjson"
+	"math"
 	"time"
 )
 
-// Dates содержит информацию о диапазоне доступных торговых дат.
-type Dates struct {
+// Date содержит информацию о диапазоне доступных торговых дат.
+type Date struct {
 	From time.Time
 	Till time.Time
 }
 
-func (date *Dates) UnmarshalJSONObject(dec *gojay.Decoder, key string) error {
-	switch key {
-	case "from":
-		return dec.Time(&date.From, "2006-01-02")
-	case "till":
-		return dec.Time(&date.Till, "2006-01-02")
-	}
-	return nil
-}
-func (date *Dates) NKeys() int {
-	return 2
-}
+func dateConverter(row *fastjson.Value) (interface{}, error) {
 
-// MarketDates получает таблицу с диапазоном торговых дат для данного рынка.
-// Описание запроса - https://iss.moex.com/iss/reference/83
-func (iss ISSClient) MarketDates(ctx context.Context, engine string, market string) (table []Dates, err error) {
-	query := issQuery{
-		history: true,
-		engine:  engine,
-		market:  market,
-		object:  "dates",
-		table:   "dates",
-	}
+	date := Date{}
+	var err error
 
-	rows, errors := iss.getAll(ctx, query)
-
-	for rawRow := range rows {
-		table = append(table, Dates{})
-		err = gojay.Unmarshal(rawRow, &table[len(table)-1])
-		if err != nil {
-			return nil, err
-		}
-	}
-	if err = <-errors; err != nil {
-
+	date.From, err = time.Parse("2006-01-02", string(row.GetStringBytes("from")))
+	if err != nil {
 		return nil, err
 	}
+	date.Till, err = time.Parse("2006-01-02", string(row.GetStringBytes("till")))
+	if err != nil {
+		return nil, err
+	}
+
+	return date, nil
+}
+
+// MarketDates получает таблицу с диапазоном дат с доступными данными для данного рынка.
+//
+// Описание запроса - https://iss.moex.com/iss/reference/83
+func (iss ISSClient) MarketDates(ctx context.Context, engine string, market string) (table []Date, err error) {
+	query := issQuery{
+		history:      true,
+		engine:       engine,
+		market:       market,
+		object:       "dates",
+		table:        "dates",
+		rowConverter: dateConverter,
+	}
+
+	rows, errors := iss.getRowsGen(ctx, query)
+
+	for row := range rows {
+		table = append(table, row.(Date))
+	}
+
+	if err = <-errors; err != nil {
+		return nil, err
+	}
+
 	return table, nil
 }
 
@@ -63,27 +67,48 @@ type Quote struct {
 	Volume int
 }
 
-func (quotes *Quote) UnmarshalJSONObject(dec *gojay.Decoder, key string) error {
-	switch key {
-	case "TRADEDATE":
-		return dec.Time(&quotes.Date, "2006-01-02")
-	case "OPEN":
-		return dec.Float(&quotes.Open)
-	case "CLOSE":
-		return dec.Float(&quotes.Close)
-	case "HIGH":
-		return dec.Float(&quotes.High)
-	case "LOW":
-		return dec.Float(&quotes.Low)
-	case "VALUE":
-		return dec.Float(&quotes.Value)
-	case "VOLUME":
-		return dec.Int(&quotes.Volume)
+func convertToNanFloat(value *fastjson.Value) (float64, error) {
+	if value.Type() == fastjson.TypeNull {
+		return math.NaN(), nil
 	}
-	return nil
+	return value.Float64()
 }
-func (quotes *Quote) NKeys() int {
-	return 7
+
+func quoteConverter(row *fastjson.Value) (interface{}, error) {
+
+	quote := Quote{}
+	var err error
+
+	quote.Date, err = time.Parse("2006-01-02", string(row.GetStringBytes("TRADEDATE")))
+	if err != nil {
+		return nil, err
+	}
+	quote.Open, err = convertToNanFloat(row.Get("OPEN"))
+	if err != nil {
+		return nil, err
+	}
+	quote.Close, err = convertToNanFloat(row.Get("CLOSE"))
+	if err != nil {
+		return nil, err
+	}
+	quote.High, err = convertToNanFloat(row.Get("HIGH"))
+	if err != nil {
+		return nil, err
+	}
+	quote.Low, err = convertToNanFloat(row.Get("LOW"))
+	if err != nil {
+		return nil, err
+	}
+	quote.Value, err = row.Get("VALUE").Float64()
+	if err != nil {
+		return nil, err
+	}
+	quote.Volume, err = row.Get("VOLUME").Int()
+	if err != nil {
+		return nil, err
+	}
+
+	return quote, nil
 }
 
 // MarketHistory исторические котировки данного инструмента для всех торговых режимов для данного рынка.
@@ -92,27 +117,26 @@ func (quotes *Quote) NKeys() int {
 // Описание запроса - https://iss.moex.com/iss/reference/63
 func (iss ISSClient) MarketHistory(ctx context.Context, engine string, market string, security string, from string, till string) (table []Quote, err error) {
 	query := issQuery{
-		history:   true,
-		engine:    engine,
-		market:    market,
-		security:  security,
-		table:     "history",
-		from:      from,
-		till:      till,
-		multipart: true,
+		history:      true,
+		engine:       engine,
+		market:       market,
+		security:     security,
+		table:        "history",
+		from:         from,
+		till:         till,
+		multipart:    true,
+		rowConverter: quoteConverter,
 	}
 
-	rows, errors := iss.getAll(ctx, query)
+	rows, errors := iss.getRowsGen(ctx, query)
 
-	for rawRow := range rows {
-		table = append(table, Quote{})
-		err = gojay.Unmarshal(rawRow, &table[len(table)-1])
-		if err != nil {
-			return nil, err
-		}
+	for row := range rows {
+		table = append(table, row.(Quote))
 	}
+
 	if err = <-errors; err != nil {
 		return nil, err
 	}
+
 	return table, nil
 }
