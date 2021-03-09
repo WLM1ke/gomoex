@@ -41,7 +41,7 @@ type issQuery struct {
 
 // string формирует URL запроса на основании описания для заданной стартовой позиции.
 // В базовый URL добавляются требование предоставить расширенный JSON без метаданных с таблицей курсора.
-func (query issQuery) string(start int) (url string) {
+func (query *issQuery) string(start int) (url string) {
 	urlParts := []string{"https://iss.moex.com/iss"}
 
 	if query.history {
@@ -63,8 +63,7 @@ func (query issQuery) string(start int) (url string) {
 		urlParts = append(urlParts, "/", query.object)
 	}
 
-	urlParts = append(urlParts, ".json?iss.json=extended&iss.meta=off")
-	urlParts = append(urlParts, "&iss.only=history.cursor,", query.table)
+	urlParts = append(urlParts, ".json?iss.json=extended&iss.meta=off&iss.only=history.cursor,", query.table)
 
 	if query.from != "" {
 		urlParts = append(urlParts, "&from=", query.from)

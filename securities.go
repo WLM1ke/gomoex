@@ -30,7 +30,7 @@ func securityConverter(row *fastjson.Value) (interface{}, error) {
 // BoardSecurities получает таблицу с торгуемыми бумагами в данном режиме торгов.
 //
 // Описание запроса - https://iss.moex.com/iss/reference/32
-func (iss ISSClient) BoardSecurities(ctx context.Context, engine string, market string, board string) (table []Security, err error) {
+func (iss ISSClient) BoardSecurities(ctx context.Context, engine, market, board string) (table []Security, err error) {
 	query := issQuery{
 		engine:       engine,
 		market:       market,
@@ -40,13 +40,13 @@ func (iss ISSClient) BoardSecurities(ctx context.Context, engine string, market 
 		rowConverter: securityConverter,
 	}
 
-	rows, errors := iss.getRowsGen(ctx, query)
+	rows, errors := iss.getRowsGen(ctx, &query)
 
 	for row := range rows {
 		table = append(table, row.(Security))
 	}
 
-	if err = <-errors; err != nil {
+	if err := <-errors; err != nil {
 		return nil, err
 	}
 

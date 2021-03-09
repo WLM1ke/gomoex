@@ -47,13 +47,13 @@ func (iss ISSClient) Dividends(ctx context.Context, security string) (table []Di
 		rowConverter: dividendConverter,
 	}
 
-	rows, errors := iss.getRowsGen(ctx, query)
+	rows, errors := iss.getRowsGen(ctx, &query)
 
 	for row := range rows {
 		table = append(table, row.(Dividend))
 	}
 
-	if err = <-errors; err != nil {
+	if err := <-errors; err != nil {
 		return nil, err
 	}
 

@@ -8,16 +8,18 @@ import (
 	"net/http"
 )
 
+// ISSClient клиент для осуществления запросов к MOEX ISS
 type ISSClient struct {
 	client  *http.Client
 	parsers *fastjson.ParserPool
 }
 
+// NewISSClient создает клиент для осуществления запросов к MOEX ISS
 func NewISSClient(client *http.Client, parsers *fastjson.ParserPool) *ISSClient {
 	return &ISSClient{client, parsers}
 }
 
-func (iss ISSClient) rowGen(ctx context.Context, query issQuery, rows chan interface{}, errc chan error) {
+func (iss ISSClient) rowGen(ctx context.Context, query *issQuery, rows chan interface{}, errc chan error) {
 
 	defer close(rows)
 	defer close(errc)
@@ -80,7 +82,7 @@ func (iss ISSClient) loadNextBlock(json *fastjson.Value) bool {
 	return false
 }
 
-func (iss ISSClient) getJSON(ctx context.Context, query issQuery, start int) (data []byte, err error) {
+func (iss ISSClient) getJSON(ctx context.Context, query *issQuery, start int) (data []byte, err error) {
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, query.string(start), nil)
 	if err != nil {
@@ -106,11 +108,11 @@ func (iss ISSClient) getJSON(ctx context.Context, query issQuery, start int) (da
 	return ioutil.ReadAll(resp.Body)
 }
 
-func (iss ISSClient) getRowsGen(ctx context.Context, query issQuery) (rows chan interface{}, errors chan error) {
+func (iss ISSClient) getRowsGen(ctx context.Context, query *issQuery) (rows chan interface{}, errc chan error) {
 	rows = make(chan interface{})
-	errors = make(chan error, 1)
+	errc = make(chan error, 1)
 
-	go iss.rowGen(ctx, query, rows, errors)
+	go iss.rowGen(ctx, query, rows, errc)
 
 	return
 }

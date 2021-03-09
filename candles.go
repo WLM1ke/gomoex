@@ -48,7 +48,7 @@ func candleBorderConverter(row *fastjson.Value) (interface{}, error) {
 // MarketCandleBorders получает таблицу с периодами дат рассчитанных свечей для разных по размеру свечек.
 //
 // Описание запроса - https://iss.moex.com/iss/reference/156
-func (iss ISSClient) MarketCandleBorders(ctx context.Context, engine string, market string, security string) (table []CandleBorder, err error) {
+func (iss ISSClient) MarketCandleBorders(ctx context.Context, engine, market, security string) (table []CandleBorder, err error) {
 	query := issQuery{
 		engine:       engine,
 		market:       market,
@@ -58,13 +58,13 @@ func (iss ISSClient) MarketCandleBorders(ctx context.Context, engine string, mar
 		rowConverter: candleBorderConverter,
 	}
 
-	rows, errors := iss.getRowsGen(ctx, query)
+	rows, errors := iss.getRowsGen(ctx, &query)
 
 	for row := range rows {
 		table = append(table, row.(CandleBorder))
 	}
 
-	if err = <-errors; err != nil {
+	if err := <-errors; err != nil {
 		return nil, err
 	}
 
@@ -128,7 +128,7 @@ func candleConverter(row *fastjson.Value) (interface{}, error) {
 //
 // По сравнению со свечками исторические котировки обычно доступны за больший период, но имеются только дневные данные.
 // Описание запроса - https://iss.moex.com/iss/reference/155
-func (iss ISSClient) MarketCandles(ctx context.Context, engine string, market string, security string, from string, till string, interval int) (table []Candle, err error) {
+func (iss ISSClient) MarketCandles(ctx context.Context, engine, market, security, from, till string, interval int) (table []Candle, err error) {
 	query := issQuery{
 		engine:       engine,
 		market:       market,
@@ -142,13 +142,13 @@ func (iss ISSClient) MarketCandles(ctx context.Context, engine string, market st
 		rowConverter: candleConverter,
 	}
 
-	rows, errors := iss.getRowsGen(ctx, query)
+	rows, errors := iss.getRowsGen(ctx, &query)
 
 	for row := range rows {
 		table = append(table, row.(Candle))
 	}
 
-	if err = <-errors; err != nil {
+	if err := <-errors; err != nil {
 		return nil, err
 	}
 
