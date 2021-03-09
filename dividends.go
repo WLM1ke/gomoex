@@ -31,13 +31,14 @@ func dividendConverter(row *fastjson.Value) (interface{}, error) {
 		return nil, err
 	}
 	div.Currency = string(row.GetStringBytes("currencyid"))
+
 	return div, nil
 }
 
-// SecurityDividends получает таблицу с дивидендами.
+// Dividends получает таблицу с дивидендами.
 // Запрос не отражен в официальном справочнике. По многим инструментам дивиденды отсутствуют или отражены не полностью.
 // Корректная информация содержится в основном только по наиболее ликвидным бумагам.
-func (iss ISSClient) SecurityDividends(ctx context.Context, security string) (table []Dividend, err error) {
+func (iss ISSClient) Dividends(ctx context.Context, security string) (table []Dividend, err error) {
 	query := issQuery{
 		security:     security,
 		object:       "dividends",
@@ -47,8 +48,8 @@ func (iss ISSClient) SecurityDividends(ctx context.Context, security string) (ta
 
 	rows, errors := iss.getRowsGen(ctx, query)
 
-	for div := range rows {
-		table = append(table, div.(Dividend))
+	for row := range rows {
+		table = append(table, row.(Dividend))
 	}
 
 	if err = <-errors; err != nil {
