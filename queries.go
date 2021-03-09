@@ -30,7 +30,7 @@ type issQuery struct {
 	// Дата, до которой выводить данные в формате ГГГГ-ММ-ДД.
 	till string
 	// Интервал свечек.
-	interval string
+	interval int
 	// Поисковый запрос о ценной бумаге.
 	q string
 	// Будет ли ответ разбит на несколько блоков, требующих последовательной загрузки со смещением стартовой позиции.
@@ -39,9 +39,9 @@ type issQuery struct {
 	rowConverter func(row *fastjson.Value) (interface{}, error)
 }
 
-// String формирует URL запроса на основании описания для заданной стартовой позиции.
+// string формирует URL запроса на основании описания для заданной стартовой позиции.
 // В базовый URL добавляются требование предоставить расширенный JSON без метаданных с таблицей курсора.
-func (query issQuery) String(start int) (url string) {
+func (query issQuery) string(start int) (url string) {
 	urlParts := []string{"https://iss.moex.com/iss"}
 
 	if query.history {
@@ -72,8 +72,8 @@ func (query issQuery) String(start int) (url string) {
 	if query.till != "" {
 		urlParts = append(urlParts, "&till=", query.till)
 	}
-	if query.interval != "" {
-		urlParts = append(urlParts, "&interval=", query.interval)
+	if query.interval != 0 {
+		urlParts = append(urlParts, "&interval=", strconv.Itoa(query.interval))
 	}
 	if query.q != "" {
 		urlParts = append(urlParts, "&q=", query.q)

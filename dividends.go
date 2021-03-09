@@ -36,6 +36,7 @@ func dividendConverter(row *fastjson.Value) (interface{}, error) {
 }
 
 // Dividends получает таблицу с дивидендами.
+//
 // Запрос не отражен в официальном справочнике. По многим инструментам дивиденды отсутствуют или отражены не полностью.
 // Корректная информация содержится в основном только по наиболее ликвидным бумагам.
 func (iss ISSClient) Dividends(ctx context.Context, security string) (table []Dividend, err error) {

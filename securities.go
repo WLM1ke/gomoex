@@ -28,6 +28,7 @@ func securityConverter(row *fastjson.Value) (interface{}, error) {
 }
 
 // BoardSecurities получает таблицу с торгуемыми бумагами в данном режиме торгов.
+//
 // Описание запроса - https://iss.moex.com/iss/reference/32
 func (iss ISSClient) BoardSecurities(ctx context.Context, engine string, market string, board string) (table []Security, err error) {
 	query := issQuery{

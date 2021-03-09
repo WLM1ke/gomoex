@@ -45,10 +45,6 @@ func (iss ISSClient) rowGen(ctx context.Context, query issQuery, rows chan inter
 		json = json.Get("1")
 
 		rawRows := json.GetArray(query.table)
-		if rawRows == nil {
-			errc <- errors.New("no data table in json")
-			return
-		}
 
 		for _, rawRow := range rawRows {
 			row, err := query.rowConverter(rawRow)
@@ -86,7 +82,7 @@ func (iss ISSClient) loadNextBlock(json *fastjson.Value) bool {
 
 func (iss ISSClient) getJSON(ctx context.Context, query issQuery, start int) (data []byte, err error) {
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, query.String(start), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, query.string(start), nil)
 	if err != nil {
 		return nil, err
 	}
