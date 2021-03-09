@@ -16,8 +16,10 @@ type Dividend struct {
 }
 
 func dividendConverter(row *fastjson.Value) (interface{}, error) {
+
 	div := Dividend{}
 	var err error
+
 	div.Ticker = string(row.GetStringBytes("secid"))
 	div.ISIN = string(row.GetStringBytes("isin"))
 	div.Date, err = time.Parse("2006-01-02", string(row.GetStringBytes("registryclosedate")))
@@ -26,7 +28,7 @@ func dividendConverter(row *fastjson.Value) (interface{}, error) {
 	}
 	div.Dividend, err = row.Get("value").Float64()
 	if err != nil {
-		return div, err
+		return nil, err
 	}
 	div.Currency = string(row.GetStringBytes("currencyid"))
 	return div, nil
@@ -34,7 +36,7 @@ func dividendConverter(row *fastjson.Value) (interface{}, error) {
 
 // SecurityDividends получает таблицу с дивидендами.
 // Запрос не отражен в официальном справочнике. По многим инструментам дивиденды отсутствуют или отражены не полностью.
-// Корректная информация содержится в основном только по наиболее ликвидным позициям.
+// Корректная информация содержится в основном только по наиболее ликвидным бумагам.
 func (iss ISSClient) SecurityDividends(ctx context.Context, security string) (table []Dividend, err error) {
 	query := issQuery{
 		security:     security,
@@ -43,14 +45,15 @@ func (iss ISSClient) SecurityDividends(ctx context.Context, security string) (ta
 		rowConverter: dividendConverter,
 	}
 
-	rows, errors := iss.getAll(ctx, query)
+	rows, errors := iss.getRowsGen(ctx, query)
 
 	for div := range rows {
 		table = append(table, div.(Dividend))
 	}
-	if err = <-errors; err != nil {
 
+	if err = <-errors; err != nil {
 		return nil, err
 	}
+
 	return table, nil
 }
