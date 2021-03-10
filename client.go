@@ -15,13 +15,13 @@ type ISSClient struct {
 }
 
 // NewISSClient создает клиент для осуществления запросов к MOEX ISS
-func NewISSClient(client *http.Client, parsers *fastjson.ParserPool) *ISSClient {
-	return &ISSClient{client, parsers}
+func NewISSClient(client *http.Client) *ISSClient {
+	return &ISSClient{client, &fastjson.ParserPool{}}
 }
 
-func (iss ISSClient) rowGen(ctx context.Context, query *issQuery, rows chan interface{}, errc chan error) {
+func (iss ISSClient) rowGen(ctx context.Context, query *issQuery, rowsc chan interface{}, errc chan error) {
 
-	defer close(rows)
+	defer close(rowsc)
 	defer close(errc)
 
 	parser := iss.parsers.Get()
@@ -37,40 +37,54 @@ func (iss ISSClient) rowGen(ctx context.Context, query *issQuery, rows chan inte
 			return
 		}
 
-		json, err := parser.ParseBytes(data)
+		json, err := getPayload(parser, data)
 		if err != nil {
 			errc <- err
 			return
 		}
 
-		// Полезные данные в первом элементе массива
-		json = json.Get("1")
-
-		rawRows := json.GetArray(query.table)
-
-		for _, rawRow := range rawRows {
-			row, err := query.rowConverter(rawRow)
-			if err != nil {
-				errc <- err
-				return
-			}
-			rows <- row
-		}
-
-		if !query.multipart || len(rawRows) == 0 {
+		blockSize, err := yieldRows(json, query, rowsc)
+		if err != nil {
+			errc <- err
 			return
 		}
 
-		if !iss.loadNextBlock(json) {
+		if !query.multipart || blockSize == 0 {
 			return
 		}
 
-		start += len(rawRows)
+		if !haveNextBlock(json) {
+			return
+		}
+
+		start += blockSize
 	}
 
 }
 
-func (iss ISSClient) loadNextBlock(json *fastjson.Value) bool {
+func yieldRows(json *fastjson.Value, query *issQuery, rows chan interface{}) (int, error) {
+
+	rawRows := json.GetArray(query.table)
+	for n, rawRow := range rawRows {
+		row, err := query.rowConverter(rawRow)
+		if err != nil {
+			return n, err
+		}
+		rows <- row
+	}
+	return len(rawRows), nil
+}
+
+// Полезные данные в первом элементе массива - в нулевом бесполезные данные о кодировке
+func getPayload(parser *fastjson.Parser, data []byte) (*fastjson.Value, error) {
+	json, err := parser.ParseBytes(data)
+	if err != nil {
+		return nil, err
+	}
+	return json.Get("1"), nil
+}
+
+func haveNextBlock(json *fastjson.Value) bool {
 	curData := json.Get("history.cursor", "0")
 	if curData == nil {
 		return true

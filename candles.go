@@ -71,7 +71,7 @@ func (iss ISSClient) MarketCandleBorders(ctx context.Context, engine, market, se
 	return table, nil
 }
 
-// Candle представляет исторические дневные котировки в формате OCHL + объем торгов в деньгах и штуках.
+// Candle представляет исторические котировки в формате OCHL + объем торгов в деньгах и штуках.
 type Candle struct {
 	Begin  time.Time
 	End    time.Time
