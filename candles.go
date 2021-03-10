@@ -2,8 +2,10 @@ package gomoex
 
 import (
 	"context"
-	"github.com/valyala/fastjson"
+	"fmt"
 	"time"
+
+	"github.com/valyala/fastjson"
 )
 
 // Доступные интервалы свечек.
@@ -25,21 +27,27 @@ type CandleBorder struct {
 }
 
 func candleBorderConverter(row *fastjson.Value) (interface{}, error) {
-
-	boarder := CandleBorder{}
-	var err error
+	var (
+		boarder = CandleBorder{}
+		err     error
+	)
 
 	boarder.Begin, err = time.Parse("2006-01-02 15:04:05", string(row.GetStringBytes("begin")))
+
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", "CandleBorder.Begin", err)
 	}
+
 	boarder.End, err = time.Parse("2006-01-02 15:04:05", string(row.GetStringBytes("end")))
+
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", "CandleBorder.End", err)
 	}
+
 	boarder.Interval, err = row.Get("interval").Int()
+
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", "CandleBorder.Interval", err)
 	}
 
 	return boarder, nil
@@ -84,41 +92,57 @@ type Candle struct {
 }
 
 func candleConverter(row *fastjson.Value) (interface{}, error) {
-
-	candle := Candle{}
-	var err error
+	var (
+		candle = Candle{}
+		err    error
+	)
 
 	candle.Begin, err = time.Parse("2006-01-02 15:04:05", string(row.GetStringBytes("begin")))
+
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", "Candle.Begin", err)
 	}
+
 	candle.End, err = time.Parse("2006-01-02 15:04:05", string(row.GetStringBytes("end")))
+
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", "Candle.End", err)
 	}
+
 	candle.Open, err = row.Get("open").Float64()
+
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", "Candle.Open", err)
 	}
+
 	candle.Close, err = row.Get("close").Float64()
+
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", "Candle.Close", err)
 	}
+
 	candle.High, err = row.Get("high").Float64()
+
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", "Candle.High", err)
 	}
+
 	candle.Low, err = row.Get("low").Float64()
+
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", "Candle.Low", err)
 	}
+
 	candle.Value, err = row.Get("value").Float64()
+
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", "Candle.Value", err)
 	}
+
 	candle.Volume, err = row.Get("volume").Int()
+
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", "Candle.Volume", err)
 	}
 
 	return candle, nil
@@ -128,7 +152,8 @@ func candleConverter(row *fastjson.Value) (interface{}, error) {
 //
 // По сравнению со свечками исторические котировки обычно доступны за больший период, но имеются только дневные данные.
 // Описание запроса - https://iss.moex.com/iss/reference/155
-func (iss ISSClient) MarketCandles(ctx context.Context, engine, market, security, from, till string, interval int) (table []Candle, err error) {
+func (iss ISSClient) MarketCandles(ctx context.Context, engine, market, security, from, till string, interval int) ([]Candle, error) {
+	table := make([]Candle, 0)
 	query := issQuery{
 		engine:       engine,
 		market:       market,

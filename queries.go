@@ -1,9 +1,10 @@
 package gomoex
 
 import (
-	"github.com/valyala/fastjson"
 	"strconv"
 	"strings"
+
+	"github.com/valyala/fastjson"
 )
 
 // issQuery содержит описание запроса к ISS и позволяет сформировать необходимый для его осуществления URL.
@@ -47,39 +48,54 @@ func (query *issQuery) string(start int) (url string) {
 	if query.history {
 		urlParts = append(urlParts, "/history")
 	}
+
 	if query.engine != "" {
 		urlParts = append(urlParts, "/engines/", query.engine)
 	}
+
 	if query.market != "" {
 		urlParts = append(urlParts, "/markets/", query.market)
 	}
+
 	if query.board != "" {
 		urlParts = append(urlParts, "/boards/", query.board)
 	}
+
 	if query.security != "" {
 		urlParts = append(urlParts, "/securities/", query.security)
 	}
+
 	if query.object != "" {
 		urlParts = append(urlParts, "/", query.object)
 	}
 
+	urlParts = query.makeQueryParams(urlParts, start)
+
+	return strings.Join(urlParts, "")
+}
+
+func (query *issQuery) makeQueryParams(urlParts []string, start int) []string {
 	urlParts = append(urlParts, ".json?iss.json=extended&iss.meta=off&iss.only=history.cursor,", query.table)
 
 	if query.from != "" {
 		urlParts = append(urlParts, "&from=", query.from)
 	}
+
 	if query.till != "" {
 		urlParts = append(urlParts, "&till=", query.till)
 	}
+
 	if query.interval != 0 {
 		urlParts = append(urlParts, "&interval=", strconv.Itoa(query.interval))
 	}
+
 	if query.q != "" {
 		urlParts = append(urlParts, "&q=", query.q)
 	}
+
 	if start != 0 {
 		urlParts = append(urlParts, "&start=", strconv.Itoa(start))
 	}
 
-	return strings.Join(urlParts, "")
+	return urlParts
 }

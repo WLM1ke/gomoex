@@ -1,5 +1,4 @@
 // Package gomoex реализует часть запросов к MOEX ISS
-//
 // Официальный справочник запросов https://iss.moex.com/iss/reference/
 // Официальный справочник разработчика https://fs.moex.com/files/6523
 package gomoex

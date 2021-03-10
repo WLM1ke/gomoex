@@ -2,8 +2,10 @@ package gomoex
 
 import (
 	"context"
-	"github.com/valyala/fastjson"
+	"fmt"
 	"time"
+
+	"github.com/valyala/fastjson"
 )
 
 // Dividend содержит информацию дате закрытия реестра, дивиденде и валюте.
@@ -16,20 +18,25 @@ type Dividend struct {
 }
 
 func dividendConverter(row *fastjson.Value) (interface{}, error) {
-
-	div := Dividend{}
-	var err error
+	var (
+		div = Dividend{}
+		err error
+	)
 
 	div.Ticker = string(row.GetStringBytes("secid"))
 	div.ISIN = string(row.GetStringBytes("isin"))
 	div.Date, err = time.Parse("2006-01-02", string(row.GetStringBytes("registryclosedate")))
+
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", "Dividend.Date", err)
 	}
+
 	div.Dividend, err = row.Get("value").Float64()
+
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", "Dividend.Dividend", err)
 	}
+
 	div.Currency = string(row.GetStringBytes("currencyid"))
 
 	return div, nil

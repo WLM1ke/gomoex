@@ -3,24 +3,25 @@ package gomoex
 import (
 	"context"
 	"errors"
-	"github.com/valyala/fastjson"
+	"fmt"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/valyala/fastjson"
 )
 
-// ISSClient клиент для осуществления запросов к MOEX ISS
+// ISSClient клиент для осуществления запросов к MOEX ISS.
 type ISSClient struct {
 	client  *http.Client
 	parsers *fastjson.ParserPool
 }
 
-// NewISSClient создает клиент для осуществления запросов к MOEX ISS
+// NewISSClient создает клиент для осуществления запросов к MOEX ISS.
 func NewISSClient(client *http.Client) *ISSClient {
 	return &ISSClient{client, &fastjson.ParserPool{}}
 }
 
 func (iss ISSClient) rowGen(ctx context.Context, query *issQuery, rowsc chan interface{}, errc chan error) {
-
 	defer close(rowsc)
 	defer close(errc)
 
@@ -30,26 +31,28 @@ func (iss ISSClient) rowGen(ctx context.Context, query *issQuery, rowsc chan int
 	start := 0
 
 	for {
-
 		data, err := iss.getJSON(ctx, query, start)
 		if err != nil {
 			errc <- err
+
 			return
 		}
 
 		json, err := getPayload(parser, data)
 		if err != nil {
 			errc <- err
+
 			return
 		}
 
-		blockSize, err := yieldRows(json, query, rowsc)
+		nRows, err := yieldRows(json, query, rowsc)
 		if err != nil {
 			errc <- err
+
 			return
 		}
 
-		if !query.multipart || blockSize == 0 {
+		if !query.multipart || nRows == 0 {
 			return
 		}
 
@@ -57,13 +60,11 @@ func (iss ISSClient) rowGen(ctx context.Context, query *issQuery, rowsc chan int
 			return
 		}
 
-		start += blockSize
+		start += nRows
 	}
-
 }
 
 func yieldRows(json *fastjson.Value, query *issQuery, rows chan interface{}) (int, error) {
-
 	rawRows := json.GetArray(query.table)
 	for n, rawRow := range rawRows {
 		row, err := query.rowConverter(rawRow)
@@ -72,15 +73,17 @@ func yieldRows(json *fastjson.Value, query *issQuery, rows chan interface{}) (in
 		}
 		rows <- row
 	}
+
 	return len(rawRows), nil
 }
 
-// Полезные данные в первом элементе массива - в нулевом бесполезные данные о кодировке
+// Полезные данные в первом элементе массива - в нулевом бесполезные данные о кодировке.
 func getPayload(parser *fastjson.Parser, data []byte) (*fastjson.Value, error) {
 	json, err := parser.ParseBytes(data)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", "Parse payload", err)
 	}
+
 	return json.Get("1"), nil
 }
 
@@ -93,19 +96,22 @@ func haveNextBlock(json *fastjson.Value) bool {
 	if curData.GetInt("INDEX")+curData.GetInt("PAGESIZE") < curData.GetInt("TOTAL") {
 		return true
 	}
+
 	return false
 }
 
-func (iss ISSClient) getJSON(ctx context.Context, query *issQuery, start int) (data []byte, err error) {
+// ErrBadStatus происходит при любом статусе ответа ISS отличающемся от 200 OK.
+var ErrBadStatus = errors.New("bad status code")
 
+func (iss ISSClient) getJSON(ctx context.Context, query *issQuery, start int) (data []byte, err error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, query.string(start), nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", "New ISS Request", err)
 	}
 
 	resp, err := iss.client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", "Do ISS Request", err)
 	}
 
 	defer func() {
@@ -116,7 +122,7 @@ func (iss ISSClient) getJSON(ctx context.Context, query *issQuery, start int) (d
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, errors.New(resp.Status)
+		return nil, fmt.Errorf("%w: %s", ErrBadStatus, resp.Status)
 	}
 
 	return ioutil.ReadAll(resp.Body)

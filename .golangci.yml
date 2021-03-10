@@ -1,69 +1,132 @@
+# options for analysis running
+run:
+  # timeout for analysis, e.g. 30s, 5m, default is 1m
+  timeout: 1m
+  # default is true. Enables skipping of directories:
+  #   vendor$, third_party$, testdata$, examples$, Godeps$, builtin$
+  skip-dirs-use-default: true
+
+# output configuration options
+output:
+  # colored-line-number|line-number|json|tab|checkstyle|code-climate, default is "colored-line-number"
+  format: tab
+  # sorts results by: filepath, line and column
+  sort-results: true
+
+# all available settings of specific linters
 linters-settings:
-  govet:
-    check-shadowing: true
-  golint:
-    min-confidence: 0
-  gocyclo:
-    min-complexity: 15
-  maligned:
-    suggest-new: true
-  dupl:
-    threshold: 100
   goconst:
+    # minimal length of string constant, 3 by default
     min-len: 2
+    # minimal occurrences count to trigger, 3 by default
     min-occurrences: 2
-  misspell:
-    locale: US
-  lll:
-    line-length: 140
   gocritic:
+    # Enable multiple checks by tags, run `GL_DEBUG=gocritic golangci-lint run` to see all tags and checks.
+    # Empty list by default. See https://github.com/go-critic/go-critic#usage -> section "Tags".
     enabled-tags:
       - performance
+      - diagnostic
       - style
       - experimental
-    disabled-checks:
-      - wrapperFunc
+  golint:
+    # minimal confidence for issues, default is 0.8
+    min-confidence: 0.3
+  govet:
+    # report about shadowed variables
+    check-shadowing: true
+    # enable or disable analyzers by name
+    # run `go tool vet help` to see all analyzers
+    disable:
+      - fieldalignment
+    enable-all: false
+  lll:
+    # max line length, lines longer will be reported. Default is 120.
+    # '\t' is counted as 1 character by default, and can be changed with the tab-width option
+    line-length: 140
+  maligned:
+    # print struct with more effective memory layout or not, false by default
+    suggest-new: true
+  misspell:
+    # Correct spellings using locale preferences for US or UK.
+    # Default is to use a neutral variety of English.
+    # Setting locale to US will correct the British spelling of 'colour' to 'color'.
+    locale: US
 
 linters:
   enable:
-    - megacheck
-    - golint
-    - govet
-    - unconvert
-    - megacheck
-    - structcheck
-    - gas
-    - gocyclo
-    - dupl
-    - misspell
-    - unparam
-    - varcheck
     - deadcode
-    - typecheck
-    - ineffassign
-    - varcheck
-    - stylecheck
-    - gochecknoinits
-    - scopelint
-    - gocritic
-    - nakedret
+    - errcheck
     - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - structcheck
+    - typecheck
+    - unused
+    - varcheck
+    # Disabled by default linters:
+    - asciicheck
+    - bodyclose
+    - cyclop
+    - depguard
+    - dogsled
+    - dupl
+    - durationcheck
+    - errorlint
+    - exhaustive
+    - exportloopref
+    - forbidigo
+    - forcetypeassert
+    - funlen
+    - gci
+    - gochecknoglobals
+    - gochecknoinits
+    - gocognit
+    - goconst
+    - gocritic
+    - gocyclo
+    - godot
+    - godox
+    - goerr113
+    - gofmt
+    - gofumpt
+    - goheader
+    - goimports
+    - golint
+    - gomnd
+    - gomodguard
+    - goprintffuncname
+    - gosec
+    - ifshort
+    - importas
+    - lll
+    - makezero
+    - misspell
+    - nakedret
+    - nestif
+    - nilerr
+    - nlreturn
+    - noctx
+    - nolintlint
+    - paralleltest
     - prealloc
+    - predeclared
+    - revive
+    - rowserrcheck
+    - scopelint
+    - sqlclosecheck
+    - stylecheck
+    - testpackage
+    - thelper
+    - tparallel
+    - unconvert
+    - unparam
+    - wastedassign
+    - whitespace
+    - wrapcheck
+    - wsl
   fast: false
-  disable-all: true
-
-run:
-  output:
-    format: tab
-  skip-dirs:
-    - vendor
+  disable-all: false
 
 issues:
-  exclude-rules:
-    - text: "should have a package comment, unless it's in another file for this package"
-      linters:
-        - golint
-    - path: _test\.go
-      linters:
-        - dupl
   exclude-use-default: false

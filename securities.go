@@ -2,6 +2,8 @@ package gomoex
 
 import (
 	"context"
+	"fmt"
+
 	"github.com/valyala/fastjson"
 )
 
@@ -13,15 +15,18 @@ type Security struct {
 }
 
 func securityConverter(row *fastjson.Value) (interface{}, error) {
-
-	sec := Security{}
-	var err error
+	var (
+		sec = Security{}
+		err error
+	)
 
 	sec.Ticker = string(row.GetStringBytes("SECID"))
 	sec.LotSize, err = row.Get("LOTSIZE").Int()
+
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", "Security.LotSize", err)
 	}
+
 	sec.ISIN = string(row.GetStringBytes("ISIN"))
 
 	return sec, nil
