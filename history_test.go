@@ -19,9 +19,9 @@ func TestMarketDates(t *testing.T) {
 
 func TestMarketHistory(t *testing.T) {
 	cl := NewISSClient(http.DefaultClient)
-	candles, err := cl.MarketHistory(context.Background(), EngineStock, MarketShares, "AKRN", "2017-10-02", "2017-10-12")
+	candles, err := cl.MarketHistory(context.Background(), EngineStock, MarketShares, "AKRN", "2017-10-02", "2018-10-12")
 	assert.Nil(t, err)
-	assert.Equal(t, len(candles), 9)
+	assert.Equal(t, len(candles), 263)
 
 	assert.Equal(t, candles[0].Date, time.Date(2017, 10, 2, 0, 0, 0, 0, time.UTC))
 	assert.Equal(t, candles[1].Open, 3460.0)
@@ -30,5 +30,5 @@ func TestMarketHistory(t *testing.T) {
 	assert.Equal(t, candles[4].Low, 3510.0)
 	assert.Equal(t, candles[5].Value, 3216573.0)
 	assert.Equal(t, candles[6].Volume, 928)
-	assert.Equal(t, candles[len(candles)-1].Date, time.Date(2017, 10, 12, 0, 0, 0, 0, time.UTC))
+	assert.Equal(t, candles[len(candles)-1].Date, time.Date(2018, 10, 12, 0, 0, 0, 0, time.UTC))
 }
