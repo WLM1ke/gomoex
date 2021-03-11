@@ -32,8 +32,6 @@ type issQuery struct {
 	till string
 	// Интервал свечек.
 	interval int
-	// Поисковый запрос о ценной бумаге.
-	q string
 	// Будет ли ответ разбит на несколько блоков, требующих последовательной загрузки со смещением стартовой позиции.
 	multipart bool
 	// Конвертор данных — выбирает необходимые поля и преобразует данные.
@@ -87,10 +85,6 @@ func (query *issQuery) makeQueryParams(urlParts []string, start int) []string {
 
 	if query.interval != 0 {
 		urlParts = append(urlParts, "&interval=", strconv.Itoa(query.interval))
-	}
-
-	if query.q != "" {
-		urlParts = append(urlParts, "&q=", query.q)
 	}
 
 	if start != 0 {

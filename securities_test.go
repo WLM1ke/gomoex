@@ -1,0 +1,18 @@
+package gomoex
+
+import (
+	"context"
+	"github.com/stretchr/testify/assert"
+	"net/http"
+	"testing"
+)
+
+func TestBoardSecurities(t *testing.T) {
+	cl := NewISSClient(http.DefaultClient)
+	sec, err := cl.BoardSecurities(context.Background(), EngineStock, MarketShares, BoardTQBR)
+	assert.Nil(t, err)
+	assert.Greater(t, len(sec), 250)
+	assert.Equal(t, sec[0].Ticker, "ABRD")
+	assert.Equal(t, sec[100].LotSize, 10000)
+	assert.Equal(t, sec[len(sec)-1].ISIN, "RU0009091300")
+}
