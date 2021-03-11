@@ -2,11 +2,12 @@ package gomoex
 
 import (
 	"context"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMarketCandleBorders(t *testing.T) {
@@ -24,6 +25,7 @@ func TestMarketCandleBorders(t *testing.T) {
 	borders, err := cl.MarketCandleBorders(context.Background(), EngineStock, MarketShares, "SNGSP")
 	assert.Nil(t, err)
 	assert.Equal(t, len(borders), 7)
+
 	for n, border := range borders {
 		begin, _ := time.Parse("2006-01-02 15:04:05", out[n][0])
 		assert.Equal(t, border.Begin, begin)
@@ -34,7 +36,6 @@ func TestMarketCandleBorders(t *testing.T) {
 		interval, _ := strconv.Atoi(out[n][2])
 		assert.Equal(t, border.Interval, interval)
 	}
-
 }
 
 func TestMarketCandlesFromBeginning(t *testing.T) {
@@ -49,7 +50,7 @@ func TestMarketCandlesFromBeginning(t *testing.T) {
 	assert.Equal(t, candles[3].Low, 140.81)
 	assert.Equal(t, candles[4].Value, 2_586_296.9)
 	assert.Equal(t, candles[5].Volume, 4140)
-	assert.Equal(t, candles[6].Begin, time.Date(2011, 12, 15, 10, 06, 0, 0, time.UTC))
+	assert.Equal(t, candles[6].Begin, time.Date(2011, 12, 15, 10, 0, 0, 0, time.UTC))
 	assert.Equal(t, candles[len(candles)-1].End, time.Date(2011, 12, 16, 18, 44, 59, 0, time.UTC))
 }
 
