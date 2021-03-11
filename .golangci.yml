@@ -108,7 +108,6 @@ linters:
     - nlreturn
     - noctx
     - nolintlint
-    - paralleltest
     - prealloc
     - predeclared
     - revive
@@ -116,7 +115,6 @@ linters:
     - scopelint
     - sqlclosecheck
     - stylecheck
-    - testpackage
     - thelper
     - tparallel
     - unconvert
