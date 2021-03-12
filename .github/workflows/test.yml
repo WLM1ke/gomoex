@@ -7,17 +7,20 @@ jobs:
   build:
     runs-on: macOS-latest
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    - name: Set up Go
-      uses: actions/setup-go@v2
+      - name: Set up Go
+        uses: actions/setup-go@v2
 
-    - name: Run golangci-lint
-      uses: golangci/golangci-lint-action@v2.5.1
-      
-    - name: Build
-      run: go build -v -race ./...
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v2.5.1
 
-    - name: Test
-      run: go test -v -race ./...
+      - name: Build
+        run: go build -v -race ./...
+
+      - name: Test
+        run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+
+      - name: submit coverage
+        bash <(curl -s https://codecov.io/bash)
 
