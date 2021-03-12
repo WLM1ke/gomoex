@@ -151,6 +151,9 @@ func candleConverter(row *fastjson.Value) (interface{}, error) {
 // MarketCandles свечки данного инструмента и интервала свечки для основного режима данного рынка.
 //
 // По сравнению со свечками исторические котировки обычно доступны за больший период, но имеются только дневные данные.
+// Даты в формате YYYY-MM-DD или пустая строка для получения информации с начала или до конца доступного интервала дат.
+// Последняя свечка во время торгов может содержать неполную информацию.
+//
 // Описание запроса - https://iss.moex.com/iss/reference/155
 func (iss ISSClient) MarketCandles(ctx context.Context, engine, market, security, from, till string, interval int) ([]Candle, error) {
 	table := make([]Candle, 0)

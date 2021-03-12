@@ -100,8 +100,8 @@ func haveNextBlock(json *fastjson.Value) bool {
 	return false
 }
 
-// ErrBadStatus происходит при любом статусе ответа ISS отличающемся от 200 OK.
-var ErrBadStatus = errors.New("bad status code")
+// ErrISSBadStatus - ответ ISS отличается от 200 OK.
+var ErrISSBadStatus = errors.New("bad status code")
 
 func (iss ISSClient) getJSON(ctx context.Context, query *issQuery, start int) (data []byte, err error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, query.string(start), nil)
@@ -122,7 +122,7 @@ func (iss ISSClient) getJSON(ctx context.Context, query *issQuery, start int) (d
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%w: %s", ErrBadStatus, resp.Status)
+		return nil, fmt.Errorf("%w: %s", ErrISSBadStatus, resp.Status)
 	}
 
 	return ioutil.ReadAll(resp.Body)

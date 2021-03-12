@@ -135,6 +135,8 @@ func quoteConverter(row *fastjson.Value) (interface{}, error) {
 // MarketHistory исторические котировки данного инструмента для всех торговых режимов для данного рынка.
 //
 // По сравнению со свечками обычно доступны за больший период, но имеются только дневные данные.
+// Даты в формате YYYY-MM-DD или пустая строка для получения информации с начала или до конца доступного интервала дат.
+//
 // Описание запроса - https://iss.moex.com/iss/reference/63
 func (iss ISSClient) MarketHistory(ctx context.Context, engine, market, security, from, till string) (table []Quote, err error) {
 	query := issQuery{

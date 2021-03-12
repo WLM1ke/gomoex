@@ -1,9 +1,13 @@
 // Package gomoex реализует часть запросов к MOEX ISS
+//
 // Официальный справочник запросов https://iss.moex.com/iss/reference/
+//
 // Официальный справочник разработчика https://fs.moex.com/files/6523
 package gomoex
 
-// Ключевые плейсхолдеры запросов — полный справочник https://iss.moex.com/iss/index.json
+// Ключевые плейсхолдеры запросов.
+//
+// Полный справочник https://iss.moex.com/iss/index.json
 const (
 	EngineStock    = "stock"    // Фондовый рынок и рынок депозитов
 	EngineCurrency = "currency" // Валютный рынок
