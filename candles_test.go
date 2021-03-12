@@ -50,7 +50,7 @@ func TestMarketCandlesFromBeginning(t *testing.T) {
 	assert.Equal(t, candles[3].Low, 140.81)
 	assert.Equal(t, candles[4].Value, 2_586_296.9)
 	assert.Equal(t, candles[5].Volume, 4140)
-	assert.Equal(t, candles[6].Begin, time.Date(2011, 12, 15, 10, 0, 0, 0, time.UTC))
+	assert.Equal(t, candles[6].Begin, time.Date(2011, 12, 15, 10, 6, 0, 0, time.UTC))
 	assert.Equal(t, candles[len(candles)-1].End, time.Date(2011, 12, 16, 18, 44, 59, 0, time.UTC))
 }
 
