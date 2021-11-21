@@ -2,7 +2,7 @@ package gomoex
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/valyala/fastjson"
@@ -99,7 +99,7 @@ func haveNextBlock(json *fastjson.Value) bool {
 }
 
 func (iss ISSClient) getJSON(ctx context.Context, query *issQuery, start int) (data []byte, err error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, query.string(start), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, query.string(start), http.NoBody)
 	if err != nil {
 		return nil, warpErrWithMsg("can't create request", err)
 	}
@@ -121,7 +121,7 @@ func (iss ISSClient) getJSON(ctx context.Context, query *issQuery, start int) (d
 		return nil, warpErrWithMsg("got request status", err)
 	}
 
-	data, err = ioutil.ReadAll(resp.Body)
+	data, err = io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, warpErrWithMsg("can't read request", err)
 	}
