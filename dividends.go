@@ -2,7 +2,6 @@ package gomoex
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/valyala/fastjson"
@@ -28,13 +27,13 @@ func dividendConverter(row *fastjson.Value) (interface{}, error) {
 	div.Date, err = time.Parse("2006-01-02", string(row.GetStringBytes("registryclosedate")))
 
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", "Dividend.Date", err)
+		return nil, wrapParseErr(err)
 	}
 
 	div.Dividend, err = row.Get("value").Float64()
 
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", "Dividend.Dividend", err)
+		return nil, wrapParseErr(err)
 	}
 
 	div.Currency = string(row.GetStringBytes("currencyid"))

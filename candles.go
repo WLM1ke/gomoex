@@ -2,7 +2,6 @@ package gomoex
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/valyala/fastjson"
@@ -35,19 +34,19 @@ func candleBorderConverter(row *fastjson.Value) (interface{}, error) {
 	boarder.Begin, err = time.Parse("2006-01-02 15:04:05", string(row.GetStringBytes("begin")))
 
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", "CandleBorder.Begin", err)
+		return nil, wrapParseErr(err)
 	}
 
 	boarder.End, err = time.Parse("2006-01-02 15:04:05", string(row.GetStringBytes("end")))
 
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", "CandleBorder.End", err)
+		return nil, wrapParseErr(err)
 	}
 
 	boarder.Interval, err = row.Get("interval").Int()
 
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", "CandleBorder.Interval", err)
+		return nil, wrapParseErr(err)
 	}
 
 	return boarder, nil
@@ -100,49 +99,49 @@ func candleConverter(row *fastjson.Value) (interface{}, error) {
 	candle.Begin, err = time.Parse("2006-01-02 15:04:05", string(row.GetStringBytes("begin")))
 
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", "Candle.Begin", err)
+		return nil, wrapParseErr(err)
 	}
 
 	candle.End, err = time.Parse("2006-01-02 15:04:05", string(row.GetStringBytes("end")))
 
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", "Candle.End", err)
+		return nil, wrapParseErr(err)
 	}
 
 	candle.Open, err = row.Get("open").Float64()
 
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", "Candle.Open", err)
+		return nil, wrapParseErr(err)
 	}
 
 	candle.Close, err = row.Get("close").Float64()
 
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", "Candle.Close", err)
+		return nil, wrapParseErr(err)
 	}
 
 	candle.High, err = row.Get("high").Float64()
 
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", "Candle.High", err)
+		return nil, wrapParseErr(err)
 	}
 
 	candle.Low, err = row.Get("low").Float64()
 
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", "Candle.Low", err)
+		return nil, wrapParseErr(err)
 	}
 
 	candle.Value, err = row.Get("value").Float64()
 
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", "Candle.Value", err)
+		return nil, wrapParseErr(err)
 	}
 
 	candle.Volume, err = row.Get("volume").Int()
 
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", "Candle.Volume", err)
+		return nil, wrapParseErr(err)
 	}
 
 	return candle, nil

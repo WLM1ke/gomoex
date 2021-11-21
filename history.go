@@ -2,7 +2,6 @@ package gomoex
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"time"
 
@@ -17,20 +16,20 @@ type Date struct {
 
 func dateConverter(row *fastjson.Value) (interface{}, error) {
 	var (
-		date = Date{}
+		date Date
 		err  error
 	)
 
 	date.From, err = time.Parse("2006-01-02", string(row.GetStringBytes("from")))
 
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", "Date.From", err)
+		return nil, wrapParseErr(err)
 	}
 
 	date.Till, err = time.Parse("2006-01-02", string(row.GetStringBytes("till")))
 
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", "Date.Till", err)
+		return nil, wrapParseErr(err)
 	}
 
 	return date, nil
@@ -78,7 +77,12 @@ func convertToNanFloat(value *fastjson.Value) (float64, error) {
 		return math.NaN(), nil
 	}
 
-	return value.Float64()
+	v, err := value.Float64()
+	if err != nil {
+		return 0, wrapParseErr(err)
+	}
+
+	return v, nil
 }
 
 func quoteConverter(row *fastjson.Value) (interface{}, error) {
@@ -90,43 +94,43 @@ func quoteConverter(row *fastjson.Value) (interface{}, error) {
 	quote.Date, err = time.Parse("2006-01-02", string(row.GetStringBytes("TRADEDATE")))
 
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", "Quote.Date", err)
+		return nil, wrapParseErr(err)
 	}
 
 	quote.Open, err = convertToNanFloat(row.Get("OPEN"))
 
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", "Quote.Open", err)
+		return nil, wrapParseErr(err)
 	}
 
 	quote.Close, err = convertToNanFloat(row.Get("CLOSE"))
 
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", "Quote.Close", err)
+		return nil, wrapParseErr(err)
 	}
 
 	quote.High, err = convertToNanFloat(row.Get("HIGH"))
 
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", "Quote.High", err)
+		return nil, wrapParseErr(err)
 	}
 
 	quote.Low, err = convertToNanFloat(row.Get("LOW"))
 
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", "Quote.Low", err)
+		return nil, wrapParseErr(err)
 	}
 
 	quote.Value, err = row.Get("VALUE").Float64()
 
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", "Quote.Value", err)
+		return nil, wrapParseErr(err)
 	}
 
 	quote.Volume, err = row.Get("VOLUME").Int()
 
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", "Quote.Volume", err)
+		return nil, wrapParseErr(err)
 	}
 
 	return quote, nil

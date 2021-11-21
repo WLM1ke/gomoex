@@ -2,8 +2,6 @@ package gomoex
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 
@@ -81,7 +79,7 @@ func yieldRows(json *fastjson.Value, query *issQuery, rows chan interface{}) (in
 func getPayload(parser *fastjson.Parser, data []byte) (*fastjson.Value, error) {
 	json, err := parser.ParseBytes(data)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", "Parse payload", err)
+		return nil, wrapParseErr(err)
 	}
 
 	return json.Get("1"), nil
@@ -100,32 +98,35 @@ func haveNextBlock(json *fastjson.Value) bool {
 	return false
 }
 
-// ErrISSBadStatus - ответ ISS отличается от 200 OK.
-var ErrISSBadStatus = errors.New("bad status code")
-
 func (iss ISSClient) getJSON(ctx context.Context, query *issQuery, start int) (data []byte, err error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, query.string(start), nil)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", "New ISS Request", err)
+		return nil, warpErrWithMsg("can't create request", err)
 	}
 
 	resp, err := iss.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", "Do ISS Request", err)
+		return nil, warpErrWithMsg("can't make request", err)
 	}
 
 	defer func() {
 		err = resp.Body.Close()
 		if err != nil {
+			err = warpErrWithMsg("can't close request", err)
 			data = nil
 		}
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%w: %s", ErrISSBadStatus, resp.Status)
+		return nil, warpErrWithMsg("got request status", err)
 	}
 
-	return ioutil.ReadAll(resp.Body)
+	data, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, warpErrWithMsg("can't read request", err)
+	}
+
+	return data, nil
 }
 
 func (iss ISSClient) getRowsGen(ctx context.Context, query *issQuery) (rows chan interface{}, errc chan error) {

@@ -28,9 +28,6 @@ linters-settings:
       - diagnostic
       - style
       - experimental
-  golint:
-    # minimal confidence for issues, default is 0.8
-    min-confidence: 0.3
   govet:
     # report about shadowed variables
     check-shadowing: true
@@ -69,16 +66,15 @@ linters:
     - bodyclose
     - cyclop
     - depguard
-    - dogsled
     - dupl
     - durationcheck
+    - errname
     - errorlint
     - exhaustive
     - exportloopref
     - forbidigo
     - forcetypeassert
     - funlen
-    - gci
     - gochecknoglobals
     - gochecknoinits
     - gocognit
@@ -92,10 +88,9 @@ linters:
     - gofumpt
     - goheader
     - goimports
-    - golint
     - gomnd
+    - gomoddirectives
     - gomodguard
-    - goprintffuncname
     - gosec
     - ifshort
     - importas
@@ -110,9 +105,9 @@ linters:
     - nolintlint
     - prealloc
     - predeclared
+    - promlinter
     - revive
     - rowserrcheck
-    - scopelint
     - sqlclosecheck
     - stylecheck
     - thelper
@@ -128,3 +123,11 @@ linters:
 
 issues:
   exclude-use-default: false
+
+  # Excluding configuration per-path, per-linter, per-text and per-source
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gochecknoglobals
+        - forcetypeassert
+        - goerr113
