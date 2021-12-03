@@ -1,9 +1,10 @@
 package gomoex
 
 import (
+	"bytes"
 	"context"
-	"io"
 	"net/http"
+	"sync"
 
 	"github.com/valyala/fastjson"
 )
@@ -12,11 +13,22 @@ import (
 type ISSClient struct {
 	client  *http.Client
 	parsers *fastjson.ParserPool
+	buffers *sync.Pool
 }
 
 // NewISSClient создает клиент для осуществления запросов к MOEX ISS.
 func NewISSClient(client *http.Client) *ISSClient {
-	return &ISSClient{client, &fastjson.ParserPool{}}
+	pool := sync.Pool{
+		New: func() interface{} {
+			return new(bytes.Buffer)
+		},
+	}
+
+	return &ISSClient{
+		client:  client,
+		parsers: &fastjson.ParserPool{},
+		buffers: &pool,
+	}
 }
 
 func (iss ISSClient) rowGen(ctx context.Context, query *issQuery, rowsc chan interface{}, errc chan error) {
@@ -28,15 +40,20 @@ func (iss ISSClient) rowGen(ctx context.Context, query *issQuery, rowsc chan int
 
 	start := 0
 
+	buffer := iss.buffers.Get().(*bytes.Buffer)
+	defer iss.buffers.Put(buffer)
+
 	for {
-		data, err := iss.getJSON(ctx, query, start)
+		buffer.Reset()
+
+		err := iss.getJSON(ctx, buffer, query, start)
 		if err != nil {
 			errc <- err
 
 			return
 		}
 
-		json, err := getPayload(parser, data)
+		json, err := getPayload(parser, buffer.Bytes())
 		if err != nil {
 			errc <- err
 
@@ -98,35 +115,34 @@ func haveNextBlock(json *fastjson.Value) bool {
 	return false
 }
 
-func (iss ISSClient) getJSON(ctx context.Context, query *issQuery, start int) (data []byte, err error) {
+func (iss ISSClient) getJSON(ctx context.Context, buffer *bytes.Buffer, query *issQuery, start int) (err error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, query.string(start), http.NoBody)
 	if err != nil {
-		return nil, warpErrWithMsg("can't create request", err)
+		return warpErrWithMsg("can't create request", err)
 	}
 
 	resp, err := iss.client.Do(req)
 	if err != nil {
-		return nil, warpErrWithMsg("can't make request", err)
+		return warpErrWithMsg("can't make request", err)
 	}
 
 	defer func() {
 		err = resp.Body.Close()
 		if err != nil {
 			err = warpErrWithMsg("can't close request", err)
-			data = nil
 		}
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, warpErrWithMsg("got request status", err)
+		return warpErrWithMsg("got request status", err)
 	}
 
-	data, err = io.ReadAll(resp.Body)
+	_, err = buffer.ReadFrom(resp.Body)
 	if err != nil {
-		return nil, warpErrWithMsg("can't read request", err)
+		return warpErrWithMsg("can't read request", err)
 	}
 
-	return data, nil
+	return nil
 }
 
 func (iss ISSClient) getRowsGen(ctx context.Context, query *issQuery) (rows chan interface{}, errc chan error) {
