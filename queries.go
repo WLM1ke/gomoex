@@ -1,17 +1,50 @@
 package gomoex
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
-	"github.com/valyala/fastjson"
+	"github.com/tidwall/gjson"
 )
 
-// issQuery содержит описание запроса к ISS и позволяет сформировать необходимый для его осуществления URL.
+const (
+	_issURL     = `https://iss.moex.com/iss`
+	_history    = `/history`
+	_engines    = `/engines/`
+	_markets    = `/markets/`
+	_boards     = `/boards/`
+	_securities = `/securities/`
+	_object     = `/`
+	_query      = `.json?iss.json=extended&iss.meta=off&iss.only=history.cursor,`
+	_from       = `&from=`
+	_till       = `&till=`
+	_interval   = `&interval=`
+	_start      = `&start=%d`
+)
+
+// converter преобразует строку таблицы из json.
+type converter func(row gjson.Result) (interface{}, error)
+
+// issQuery содержит данные необходимые для осуществления запроса.
+type issQuery struct {
+	fmt          string
+	table        string
+	multipart    bool
+	rowConverter converter
+}
+
+func (query issQuery) URL(start int) string {
+	return fmt.Sprintf(query.fmt, start)
+}
+
+// querySettings содержит настройки создания запроса к ISS.
+//
+// Позволяет сформировать необходимый для его осуществления URL и вспомогательные данные.
 //
 // Официальный справочник запросов https://iss.moex.com/iss/reference/
 // Официальный справочник разработчика https://fs.moex.com/files/6523
-type issQuery struct {
+type querySettings struct {
 	// Нужен ли префикс history.
 	history bool
 	// Значение плейсхолдера engine. Для пустой строки не добавляется в запрос.
@@ -35,61 +68,69 @@ type issQuery struct {
 	// Будет ли ответ разбит на несколько блоков, требующих последовательной загрузки со смещением стартовой позиции.
 	multipart bool
 	// Конвертор данных — выбирает необходимые поля и преобразует данные.
-	rowConverter func(row *fastjson.Value) (interface{}, error)
+	rowConverter converter
 }
 
-// string формирует URL запроса на основании описания для заданной стартовой позиции.
+// Make формирует URL запроса на основании описания для заданной стартовой позиции.
 // В базовый URL добавляются требование предоставить расширенный JSON без метаданных с таблицей курсора.
-func (query *issQuery) string(start int) (url string) {
-	urlParts := []string{"https://iss.moex.com/iss"}
+func (query *querySettings) Make() issQuery {
+	var url strings.Builder
+
+	url.WriteString(_issURL)
 
 	if query.history {
-		urlParts = append(urlParts, "/history")
+		url.WriteString(_history)
 	}
 
 	if query.engine != "" {
-		urlParts = append(urlParts, "/engines/", query.engine)
+		url.WriteString(_engines)
+		url.WriteString(query.engine)
 	}
 
 	if query.market != "" {
-		urlParts = append(urlParts, "/markets/", query.market)
+		url.WriteString(_markets)
+		url.WriteString(query.market)
 	}
 
 	if query.board != "" {
-		urlParts = append(urlParts, "/boards/", query.board)
+		url.WriteString(_boards)
+		url.WriteString(query.board)
 	}
 
 	if query.security != "" {
-		urlParts = append(urlParts, "/securities/", query.security)
+		url.WriteString(_securities)
+		url.WriteString(query.security)
 	}
 
 	if query.object != "" {
-		urlParts = append(urlParts, "/", query.object)
+		url.WriteString(_object)
+		url.WriteString(query.object)
 	}
 
-	urlParts = query.makeQueryParams(urlParts, start)
-
-	return strings.Join(urlParts, "")
-}
-
-func (query *issQuery) makeQueryParams(urlParts []string, start int) []string {
-	urlParts = append(urlParts, ".json?iss.json=extended&iss.meta=off&iss.only=history.cursor,", query.table)
+	url.WriteString(_query)
+	url.WriteString(query.table)
 
 	if query.from != "" {
-		urlParts = append(urlParts, "&from=", query.from)
+		url.WriteString(_from)
+		url.WriteString(query.from)
 	}
 
 	if query.till != "" {
-		urlParts = append(urlParts, "&till=", query.till)
+		url.WriteString(_till)
+		url.WriteString(query.till)
 	}
 
 	if query.interval != 0 {
-		urlParts = append(urlParts, "&interval=", strconv.Itoa(query.interval))
+		url.WriteString(_interval)
+		url.WriteString(strconv.Itoa(query.interval))
 	}
 
-	if start != 0 {
-		urlParts = append(urlParts, "&start=", strconv.Itoa(start))
-	}
+	url.WriteString(_start)
 
-	return urlParts
+	return issQuery{
+		fmt:          url.String(),
+		table:        query.table,
+		multipart:    query.multipart,
+		rowConverter: query.rowConverter,
+	}
 }
