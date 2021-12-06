@@ -3,75 +3,69 @@ package gomoex
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"net/http"
 	"sync"
 
-	"github.com/valyala/fastjson"
+	"github.com/tidwall/gjson"
+)
+
+const (
+	_payloadPath = `1.`
+	_cursorPath  = `history\.cursor.`
+	_cursorIndex = _payloadPath + _cursorPath + `INDEX`
+	_cursorPage  = _payloadPath + _cursorPath + `PAGESIZE`
+	_cursorTotal = _payloadPath + _cursorPath + `TOTAL`
 )
 
 // ISSClient клиент для осуществления запросов к MOEX ISS.
 type ISSClient struct {
 	client  *http.Client
-	parsers *fastjson.ParserPool
-	buffers *sync.Pool
+	buffers sync.Pool
 }
 
 // NewISSClient создает клиент для осуществления запросов к MOEX ISS.
 func NewISSClient(client *http.Client) *ISSClient {
-	pool := sync.Pool{
-		New: func() interface{} {
-			return new(bytes.Buffer)
-		},
-	}
+	iss := ISSClient{client: client}
+	iss.buffers.New = func() interface{} { return new(bytes.Buffer) }
 
-	return &ISSClient{
-		client:  client,
-		parsers: &fastjson.ParserPool{},
-		buffers: &pool,
-	}
+	return &iss
 }
 
-func (iss ISSClient) rowGen(ctx context.Context, query *issQuery, rowsc chan interface{}, errc chan error) {
-	defer close(rowsc)
-	defer close(errc)
+func (iss *ISSClient) getRowsGen(ctx context.Context, query issQuery) chan interface{} {
+	rows := make(chan interface{})
 
-	parser := iss.parsers.Get()
-	defer iss.parsers.Put(parser)
+	go iss.rowGen(ctx, query, rows)
 
-	start := 0
+	return rows
+}
+
+func (iss *ISSClient) rowGen(ctx context.Context, query issQuery, out chan<- interface{}) {
+	defer close(out)
 
 	buffer := iss.buffers.Get().(*bytes.Buffer)
 	defer iss.buffers.Put(buffer)
 
-	for {
+	for start := 0; ; {
 		buffer.Reset()
 
-		err := iss.getJSON(ctx, buffer, query, start)
+		url := query.URL(start)
+
+		err := iss.bufferJSON(ctx, url, buffer)
 		if err != nil {
-			errc <- err
+			out <- err
 
 			return
 		}
 
-		json, err := getPayload(parser, buffer.Bytes())
-		if err != nil {
-			errc <- err
-
-			return
+		table, haveNext := extractTable(buffer, query.table)
+		if !query.multipart {
+			haveNext = false
 		}
 
-		nRows, err := yieldRows(json, query, rowsc)
-		if err != nil {
-			errc <- err
+		nRows := sendRows(table, query, out)
 
-			return
-		}
-
-		if !query.multipart || nRows == 0 {
-			return
-		}
-
-		if !haveNextBlock(json) {
+		if !haveNext || nRows == 0 {
 			return
 		}
 
@@ -79,77 +73,86 @@ func (iss ISSClient) rowGen(ctx context.Context, query *issQuery, rowsc chan int
 	}
 }
 
-func yieldRows(json *fastjson.Value, query *issQuery, rows chan interface{}) (int, error) {
-	rawRows := json.GetArray(query.table)
-	for n, rawRow := range rawRows {
-		row, err := query.rowConverter(rawRow)
-		if err != nil {
-			return n, err
-		}
-		rows <- row
-	}
-
-	return len(rawRows), nil
-}
-
-// Полезные данные в первом элементе массива - в нулевом бесполезные данные о кодировке.
-func getPayload(parser *fastjson.Parser, data []byte) (*fastjson.Value, error) {
-	json, err := parser.ParseBytes(data)
+func (iss *ISSClient) bufferJSON(ctx context.Context, url string, buffer *bytes.Buffer) (err error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
-		return nil, wrapParseErr(err)
-	}
-
-	return json.Get("1"), nil
-}
-
-func haveNextBlock(json *fastjson.Value) bool {
-	curData := json.Get("history.cursor", "0")
-	if curData == nil {
-		return true
-	}
-
-	if curData.GetInt("INDEX")+curData.GetInt("PAGESIZE") < curData.GetInt("TOTAL") {
-		return true
-	}
-
-	return false
-}
-
-func (iss ISSClient) getJSON(ctx context.Context, buffer *bytes.Buffer, query *issQuery, start int) (err error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, query.string(start), http.NoBody)
-	if err != nil {
-		return warpErrWithMsg("can't create request", err)
+		return newWarpedErr("can't create request", err)
 	}
 
 	resp, err := iss.client.Do(req)
 	if err != nil {
-		return warpErrWithMsg("can't make request", err)
+		return newWarpedErr("can't make request", err)
 	}
 
 	defer func() {
 		err = resp.Body.Close()
 		if err != nil {
-			err = warpErrWithMsg("can't close request", err)
+			err = newWarpedErr("can't close request", err)
 		}
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return warpErrWithMsg("got request status", err)
+		return newWarpedErr("got request status", err)
 	}
 
 	_, err = buffer.ReadFrom(resp.Body)
 	if err != nil {
-		return warpErrWithMsg("can't read request", err)
+		return newWarpedErr("can't read request", err)
 	}
 
 	return nil
 }
 
-func (iss ISSClient) getRowsGen(ctx context.Context, query *issQuery) (rows chan interface{}, errc chan error) {
-	rows = make(chan interface{})
-	errc = make(chan error, 1)
+func extractTable(buffer *bytes.Buffer, tableName string) (gjson.Result, bool) {
+	results := gjson.GetManyBytes(buffer.Bytes(), _payloadPath+tableName, _cursorIndex, _cursorPage, _cursorTotal)
 
-	go iss.rowGen(ctx, query, rows, errc)
+	table := results[0]
+	index := results[1]
+	page := results[2]
+	total := results[3]
 
-	return
+	if !index.Exists() || !page.Exists() || !total.Exists() {
+		return table, true
+	}
+
+	if index.Int()+page.Int() < total.Int() {
+		return table, true
+	}
+
+	return table, false
+}
+
+func sendRows(table gjson.Result, query issQuery, out chan<- interface{}) int {
+	if !table.IsArray() {
+		out <- newErrWithMsg(fmt.Sprintf("can't find tableName %s", query.table))
+
+		return 0
+	}
+
+	count := 0
+
+	table.ForEach(
+		func(_, rawRow gjson.Result) bool {
+			if !rawRow.IsObject() {
+				count = 0
+
+				return false
+			}
+
+			row, err := query.rowConverter(rawRow)
+			if err != nil {
+				out <- err
+				count = 0
+
+				return false
+			}
+
+			out <- row
+			count++
+
+			return true
+		},
+	)
+
+	return count
 }
