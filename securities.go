@@ -3,7 +3,7 @@ package gomoex
 import (
 	"context"
 
-	"github.com/valyala/fastjson"
+	"github.com/tidwall/gjson"
 )
 
 // Security содержит информацию о ценной бумаге.
@@ -13,20 +13,12 @@ type Security struct {
 	ISIN    string
 }
 
-func securityConverter(row *fastjson.Value) (interface{}, error) {
-	var (
-		sec = Security{}
-		err error
-	)
+func securityConverter(row gjson.Result) (interface{}, error) {
+	var sec Security
 
-	sec.Ticker = string(row.GetStringBytes("SECID"))
-	sec.LotSize, err = row.Get("LOTSIZE").Int()
-
-	if err != nil {
-		return nil, wrapParseErr(err)
-	}
-
-	sec.ISIN = string(row.GetStringBytes("ISIN"))
+	sec.Ticker = row.Get("SECID").String()
+	sec.LotSize = int(row.Get("LOTSIZE").Int())
+	sec.ISIN = row.Get("ISIN").String()
 
 	return sec, nil
 }
@@ -34,8 +26,8 @@ func securityConverter(row *fastjson.Value) (interface{}, error) {
 // BoardSecurities получает таблицу с торгуемыми бумагами в данном режиме торгов.
 //
 // Описание запроса - https://iss.moex.com/iss/reference/32
-func (iss ISSClient) BoardSecurities(ctx context.Context, engine, market, board string) (table []Security, err error) {
-	query := issQuery{
+func (iss *ISSClient) BoardSecurities(ctx context.Context, engine, market, board string) (table []Security, err error) {
+	query := querySettings{
 		engine:       engine,
 		market:       market,
 		board:        board,
@@ -44,14 +36,13 @@ func (iss ISSClient) BoardSecurities(ctx context.Context, engine, market, board 
 		rowConverter: securityConverter,
 	}
 
-	rows, errors := iss.getRowsGen(ctx, &query)
-
-	for row := range rows {
-		table = append(table, row.(Security))
-	}
-
-	if err := <-errors; err != nil {
-		return nil, err
+	for raw := range iss.getRowsGen(ctx, query.Make()) {
+		switch row := raw.(type) {
+		case Security:
+			table = append(table, row)
+		case error:
+			return nil, row
+		}
 	}
 
 	return table, nil

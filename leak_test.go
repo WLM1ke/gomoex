@@ -2,10 +2,11 @@ package gomoex
 
 import (
 	"fmt"
-	"go.uber.org/goleak"
 	"net/http"
 	"os"
 	"testing"
+
+	"go.uber.org/goleak"
 )
 
 func TestMain(m *testing.M) {
@@ -14,11 +15,13 @@ func TestMain(m *testing.M) {
 
 func runWithLeakDetector(m *testing.M, teardownFunc func()) {
 	exitCode := m.Run()
+
 	teardownFunc()
 
 	if exitCode == 0 {
 		if err := goleak.Find(); err != nil {
-			fmt.Printf("%v\n\nleaks on successful test run\n", err)
+			fmt.Fprintf(os.Stderr, "%v\n\nleaks on successful test run\n", err)
+
 			exitCode = 1
 		}
 	}

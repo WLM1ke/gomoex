@@ -43,7 +43,7 @@ func (iss *ISSClient) getRowsGen(ctx context.Context, query issQuery) chan inter
 func (iss *ISSClient) rowGen(ctx context.Context, query issQuery, out chan<- interface{}) {
 	defer close(out)
 
-	buffer := iss.buffers.Get().(*bytes.Buffer)
+	buffer := iss.buffers.Get().(*bytes.Buffer) //nolint:forcetypeassert
 	defer iss.buffers.Put(buffer)
 
 	for start := 0; ; {
