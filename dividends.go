@@ -7,6 +7,14 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+const (
+	_dividendSECID     = `secid`
+	_dividendISIN      = `isin`
+	_dividendCloseDate = `registryclosedate`
+	_dividendValue     = `value`
+	_dividendCurrency  = `currencyid`
+)
+
 // Dividend содержит информацию дате закрытия реестра, дивиденде и валюте.
 type Dividend struct {
 	Ticker   string
@@ -22,16 +30,16 @@ func dividendConverter(row gjson.Result) (interface{}, error) {
 		div Dividend
 	)
 
-	div.Ticker = row.Get("secid").String()
-	div.ISIN = row.Get("isin").String()
+	div.Ticker = row.Get(_dividendSECID).String()
+	div.ISIN = row.Get(_dividendISIN).String()
 
-	div.Date, err = time.Parse("2006-01-02", row.Get("registryclosedate").String())
+	div.Date, err = time.Parse("2006-01-02", row.Get(_dividendCloseDate).String())
 	if err != nil {
 		return nil, newParseErr(err)
 	}
 
-	div.Dividend = row.Get("value").Float()
-	div.Currency = row.Get("currencyid").String()
+	div.Dividend = row.Get(_dividendValue).Float()
+	div.Currency = row.Get(_dividendCurrency).String()
 
 	return div, nil
 }
