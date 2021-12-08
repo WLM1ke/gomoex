@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/valyala/fastjson"
+	"github.com/tidwall/gjson"
 )
 
 // Доступные интервалы свечек.
@@ -18,6 +18,12 @@ const (
 	IntervalQuoter = 4
 )
 
+const (
+	_borderBegin    = `begin`
+	_borderEnd      = `end`
+	_borderInterval = `interval`
+)
+
 // CandleBorder содержит информацию о диапазоне доступных дат для свечек заданного интервала.
 type CandleBorder struct {
 	Begin    time.Time
@@ -25,29 +31,23 @@ type CandleBorder struct {
 	Interval int
 }
 
-func candleBorderConverter(row *fastjson.Value) (interface{}, error) {
+func candleBorderConverter(row gjson.Result) (interface{}, error) {
 	var (
-		boarder = CandleBorder{}
+		boarder CandleBorder
 		err     error
 	)
 
-	boarder.Begin, err = time.Parse("2006-01-02 15:04:05", string(row.GetStringBytes("begin")))
-
+	boarder.Begin, err = time.Parse("2006-01-02 15:04:05", row.Get(_borderBegin).String())
 	if err != nil {
-		return nil, wrapParseErr(err)
+		return nil, newParseErr(err)
 	}
 
-	boarder.End, err = time.Parse("2006-01-02 15:04:05", string(row.GetStringBytes("end")))
-
+	boarder.End, err = time.Parse("2006-01-02 15:04:05", row.Get(_borderEnd).String())
 	if err != nil {
-		return nil, wrapParseErr(err)
+		return nil, newParseErr(err)
 	}
 
-	boarder.Interval, err = row.Get("interval").Int()
-
-	if err != nil {
-		return nil, wrapParseErr(err)
-	}
+	boarder.Interval = int(row.Get(_borderInterval).Int())
 
 	return boarder, nil
 }
@@ -55,8 +55,13 @@ func candleBorderConverter(row *fastjson.Value) (interface{}, error) {
 // MarketCandleBorders получает таблицу с периодами дат рассчитанных свечей для разных по размеру свечек.
 //
 // Описание запроса - https://iss.moex.com/iss/reference/156
-func (iss ISSClient) MarketCandleBorders(ctx context.Context, engine, market, security string) (table []CandleBorder, err error) {
-	query := issQuery{
+func (iss *ISSClient) MarketCandleBorders(
+	ctx context.Context,
+	engine,
+	market,
+	security string,
+) (table []CandleBorder, err error) {
+	query := querySettings{
 		engine:       engine,
 		market:       market,
 		security:     security,
@@ -65,18 +70,28 @@ func (iss ISSClient) MarketCandleBorders(ctx context.Context, engine, market, se
 		rowConverter: candleBorderConverter,
 	}
 
-	rows, errors := iss.getRowsGen(ctx, &query)
-
-	for row := range rows {
-		table = append(table, row.(CandleBorder))
-	}
-
-	if err := <-errors; err != nil {
-		return nil, err
+	for raw := range iss.getRowsGen(ctx, query.Make()) {
+		switch row := raw.(type) {
+		case CandleBorder:
+			table = append(table, row)
+		case error:
+			return nil, row
+		}
 	}
 
 	return table, nil
 }
+
+const (
+	_candleBegin  = `begin`
+	_candleEnd    = `end`
+	_candleOpen   = `open`
+	_candleClose  = `close`
+	_candleHigh   = `high`
+	_candleLow    = `low`
+	_candleValue  = `value`
+	_candleVolume = `volume`
+)
 
 // Candle представляет исторические котировки в формате OCHL + объем торгов в деньгах и штуках.
 type Candle struct {
@@ -90,59 +105,28 @@ type Candle struct {
 	Volume int
 }
 
-func candleConverter(row *fastjson.Value) (interface{}, error) {
+func candleConverter(row gjson.Result) (interface{}, error) {
 	var (
-		candle = Candle{}
+		candle Candle
 		err    error
 	)
 
-	candle.Begin, err = time.Parse("2006-01-02 15:04:05", string(row.GetStringBytes("begin")))
-
+	candle.Begin, err = time.Parse("2006-01-02 15:04:05", row.Get(_candleBegin).String())
 	if err != nil {
-		return nil, wrapParseErr(err)
+		return nil, newParseErr(err)
 	}
 
-	candle.End, err = time.Parse("2006-01-02 15:04:05", string(row.GetStringBytes("end")))
-
+	candle.End, err = time.Parse("2006-01-02 15:04:05", row.Get(_candleEnd).String())
 	if err != nil {
-		return nil, wrapParseErr(err)
+		return nil, newParseErr(err)
 	}
 
-	candle.Open, err = row.Get("open").Float64()
-
-	if err != nil {
-		return nil, wrapParseErr(err)
-	}
-
-	candle.Close, err = row.Get("close").Float64()
-
-	if err != nil {
-		return nil, wrapParseErr(err)
-	}
-
-	candle.High, err = row.Get("high").Float64()
-
-	if err != nil {
-		return nil, wrapParseErr(err)
-	}
-
-	candle.Low, err = row.Get("low").Float64()
-
-	if err != nil {
-		return nil, wrapParseErr(err)
-	}
-
-	candle.Value, err = row.Get("value").Float64()
-
-	if err != nil {
-		return nil, wrapParseErr(err)
-	}
-
-	candle.Volume, err = row.Get("volume").Int()
-
-	if err != nil {
-		return nil, wrapParseErr(err)
-	}
+	candle.Open = row.Get(_candleOpen).Float()
+	candle.Close = row.Get(_candleClose).Float()
+	candle.High = row.Get(_candleHigh).Float()
+	candle.Low = row.Get(_candleLow).Float()
+	candle.Value = row.Get(_candleValue).Float()
+	candle.Volume = int(row.Get(_candleVolume).Int())
 
 	return candle, nil
 }
@@ -154,9 +138,13 @@ func candleConverter(row *fastjson.Value) (interface{}, error) {
 // Последняя свечка во время торгов может содержать неполную информацию.
 //
 // Описание запроса - https://iss.moex.com/iss/reference/155
-func (iss ISSClient) MarketCandles(ctx context.Context, engine, market, security, from, till string, interval int) ([]Candle, error) {
+func (iss *ISSClient) MarketCandles(
+	ctx context.Context,
+	engine, market, security, from, till string,
+	interval int,
+) ([]Candle, error) {
 	table := make([]Candle, 0)
-	query := issQuery{
+	query := querySettings{
 		engine:       engine,
 		market:       market,
 		security:     security,
@@ -169,14 +157,13 @@ func (iss ISSClient) MarketCandles(ctx context.Context, engine, market, security
 		rowConverter: candleConverter,
 	}
 
-	rows, errors := iss.getRowsGen(ctx, &query)
-
-	for row := range rows {
-		table = append(table, row.(Candle))
-	}
-
-	if err := <-errors; err != nil {
-		return nil, err
+	for raw := range iss.getRowsGen(ctx, query.Make()) {
+		switch row := raw.(type) {
+		case Candle:
+			table = append(table, row)
+		case error:
+			return nil, row
+		}
 	}
 
 	return table, nil

@@ -26,14 +26,14 @@ func TestMarketCandleBorders(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, len(borders), 7)
 
-	for n, border := range borders {
-		begin, _ := time.Parse("2006-01-02 15:04:05", out[n][0])
+	for nRow, border := range borders {
+		begin, _ := time.Parse("2006-01-02 15:04:05", out[nRow][0])
 		assert.Equal(t, border.Begin, begin)
 
-		end, _ := time.Parse("2006-01-02 15:04:05", out[n][1])
+		end, _ := time.Parse("2006-01-02 15:04:05", out[nRow][1])
 		assert.True(t, border.End.After(end))
 
-		interval, _ := strconv.Atoi(out[n][2])
+		interval, _ := strconv.Atoi(out[nRow][2])
 		assert.Equal(t, border.Interval, interval)
 	}
 }
