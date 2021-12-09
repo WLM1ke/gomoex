@@ -3,6 +3,7 @@ package gomoex
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"sync"
@@ -18,6 +19,8 @@ const (
 	_cursorTotal = _payloadPath + _cursorPath + `TOTAL`
 )
 
+var errLastBlock = errors.New("last block")
+
 // ISSClient клиент для осуществления запросов к MOEX ISS.
 type ISSClient struct {
 	client  *http.Client
@@ -32,116 +35,120 @@ func NewISSClient(client *http.Client) *ISSClient {
 	return &iss
 }
 
-func (iss *ISSClient) getRowsGen(ctx context.Context, query issQuery) chan interface{} {
+func (iss *ISSClient) rowsGen(ctx context.Context, query issQuery) chan interface{} {
 	rows := make(chan interface{})
 
-	go iss.rowGen(ctx, query, rows)
+	go func(query issQuery) {
+		defer close(rows)
+
+		for query.err == nil {
+			query = iss.parseBlock(ctx, query, rows)
+		}
+
+		if !errors.Is(query.err, errLastBlock) {
+			rows <- query.err
+		}
+	}(query)
 
 	return rows
 }
 
-func (iss *ISSClient) rowGen(ctx context.Context, query issQuery, out chan<- interface{}) {
-	defer close(out)
-
+func (iss *ISSClient) parseBlock(ctx context.Context, query issQuery, out chan<- interface{}) issQuery {
 	buffer := iss.buffers.Get().(*bytes.Buffer) //nolint:forcetypeassert
-	defer iss.buffers.Put(buffer)
-
-	for start := 0; ; {
+	defer func() {
 		buffer.Reset()
+		iss.buffers.Put(buffer)
+	}()
 
-		url := query.URL(start)
+	json, err := iss.getJSON(ctx, query.URL(), buffer)
+	if err != nil {
+		query.err = err
 
-		err := iss.bufferJSON(ctx, url, buffer)
-		if err != nil {
-			out <- err
-
-			return
-		}
-
-		table, haveNext := extractTable(buffer, query.table)
-		if !query.multipart {
-			haveNext = false
-		}
-
-		nRows := sendRows(table, query, out)
-
-		if !haveNext || nRows == 0 {
-			return
-		}
-
-		start += nRows
+		return query
 	}
+
+	return sendTable(json, query, out)
 }
 
-func (iss *ISSClient) bufferJSON(ctx context.Context, url string, buffer *bytes.Buffer) (err error) {
+func (iss *ISSClient) getJSON(ctx context.Context, url string, buffer *bytes.Buffer) (json []byte, err error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
-		return newWarpedErr("can't create request", err)
+		return nil, newWarpedErr("can't create request", err)
 	}
 
 	resp, err := iss.client.Do(req)
 	if err != nil {
-		return newWarpedErr("can't make request", err)
+		return nil, newWarpedErr("can't make request", err)
 	}
 
 	defer func() {
 		err = resp.Body.Close()
 		if err != nil {
+			json = nil
 			err = newWarpedErr("can't close request", err)
 		}
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return newWarpedErr("got request status", err)
+		return nil, newWarpedErr("got request status", err)
 	}
 
 	_, err = buffer.ReadFrom(resp.Body)
 	if err != nil {
-		return newWarpedErr("can't read request", err)
+		return nil, newWarpedErr("can't read request", err)
 	}
 
-	return nil
+	return buffer.Bytes(), nil
 }
 
-func extractTable(buffer *bytes.Buffer, tableName string) (gjson.Result, bool) {
-	results := gjson.GetManyBytes(buffer.Bytes(), _payloadPath+tableName, _cursorIndex, _cursorPage, _cursorTotal)
+func sendTable(json []byte, query issQuery, out chan<- interface{}) issQuery {
+	results := gjson.GetManyBytes(json, _payloadPath+query.table, _cursorIndex, _cursorPage, _cursorTotal)
 
 	table := results[0]
 	index := results[1]
 	page := results[2]
 	total := results[3]
 
-	if !index.Exists() || !page.Exists() || !total.Exists() {
-		return table, true
+	if !table.IsArray() {
+		query.err = newErrWithMsg(fmt.Sprintf("can't find tableName %s", query.table))
+
+		return query
 	}
 
-	if index.Int()+page.Int() < total.Int() {
-		return table, true
+	cursorExists := index.Exists() && page.Exists() && total.Exists()
+
+	count, err := sendRows(table, query.rowConverter, out)
+	query.start += count
+	query.err = err
+
+	switch {
+	case count == 0:
+		query.err = errLastBlock
+	case !query.multipart:
+		query.err = errLastBlock
+	case cursorExists:
+		if index.Int()+page.Int() >= total.Int() {
+			query.err = errLastBlock
+		}
 	}
 
-	return table, false
+	return query
 }
 
-func sendRows(table gjson.Result, query issQuery, out chan<- interface{}) int {
-	if !table.IsArray() {
-		out <- newErrWithMsg(fmt.Sprintf("can't find tableName %s", query.table))
-
-		return 0
-	}
-
-	count := 0
-
+func sendRows(table gjson.Result, converter converter, out chan<- interface{}) (count int, err error) {
 	table.ForEach(
 		func(_, rawRow gjson.Result) bool {
 			if !rawRow.IsObject() {
 				count = 0
+				err = newErrWithMsg("can't parse row")
 
 				return false
 			}
 
-			row, err := query.rowConverter(rawRow)
+			var row interface{}
+
+			row, err = converter(rawRow)
 			if err != nil {
-				out <- err
 				count = 0
 
 				return false
@@ -154,5 +161,5 @@ func sendRows(table gjson.Result, query issQuery, out chan<- interface{}) int {
 		},
 	)
 
-	return count
+	return count, nil
 }

@@ -42,7 +42,7 @@ func (iss *ISSClient) BoardSecurities(ctx context.Context, engine, market, board
 		rowConverter: securityConverter,
 	}
 
-	for raw := range iss.getRowsGen(ctx, query.Make()) {
+	for raw := range iss.rowsGen(ctx, query.Make()) {
 		switch row := raw.(type) {
 		case Security:
 			table = append(table, row)

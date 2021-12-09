@@ -56,7 +56,7 @@ func (iss *ISSClient) Dividends(ctx context.Context, security string) (table []D
 		rowConverter: dividendConverter,
 	}
 
-	for raw := range iss.getRowsGen(ctx, query.Make()) {
+	for raw := range iss.rowsGen(ctx, query.Make()) {
 		switch row := raw.(type) {
 		case Dividend:
 			table = append(table, row)

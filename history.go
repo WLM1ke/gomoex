@@ -51,7 +51,7 @@ func (iss *ISSClient) MarketDates(ctx context.Context, engine, market string) (t
 		rowConverter: dateConverter,
 	}
 
-	for raw := range iss.getRowsGen(ctx, query.Make()) {
+	for raw := range iss.rowsGen(ctx, query.Make()) {
 		switch row := raw.(type) {
 		case Date:
 			table = append(table, row)
@@ -139,7 +139,7 @@ func (iss *ISSClient) MarketHistory(
 		rowConverter: quoteConverter,
 	}
 
-	for raw := range iss.getRowsGen(ctx, query.Make()) {
+	for raw := range iss.rowsGen(ctx, query.Make()) {
 		switch row := raw.(type) {
 		case Quote:
 			table = append(table, row)

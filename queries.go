@@ -32,10 +32,12 @@ type issQuery struct {
 	table        string
 	multipart    bool
 	rowConverter converter
+	start        int
+	err          error
 }
 
-func (query issQuery) URL(start int) string {
-	return fmt.Sprintf(query.fmt, start)
+func (query issQuery) URL() string {
+	return fmt.Sprintf(query.fmt, query.start)
 }
 
 // querySettings содержит настройки создания запроса к ISS.

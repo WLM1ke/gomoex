@@ -70,7 +70,7 @@ func (iss *ISSClient) MarketCandleBorders(
 		rowConverter: candleBorderConverter,
 	}
 
-	for raw := range iss.getRowsGen(ctx, query.Make()) {
+	for raw := range iss.rowsGen(ctx, query.Make()) {
 		switch row := raw.(type) {
 		case CandleBorder:
 			table = append(table, row)
@@ -157,7 +157,7 @@ func (iss *ISSClient) MarketCandles(
 		rowConverter: candleConverter,
 	}
 
-	for raw := range iss.getRowsGen(ctx, query.Make()) {
+	for raw := range iss.rowsGen(ctx, query.Make()) {
 		switch row := raw.(type) {
 		case Candle:
 			table = append(table, row)
