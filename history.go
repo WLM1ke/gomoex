@@ -5,7 +5,12 @@ import (
 	"math"
 	"time"
 
-	"github.com/valyala/fastjson"
+	"github.com/tidwall/gjson"
+)
+
+const (
+	_dateFrom = `from`
+	_dateTill = `till`
 )
 
 // Date содержит информацию о диапазоне доступных торговых дат.
@@ -14,22 +19,20 @@ type Date struct {
 	Till time.Time
 }
 
-func dateConverter(row *fastjson.Value) (interface{}, error) {
+func dateConverter(row gjson.Result) (interface{}, error) {
 	var (
 		date Date
 		err  error
 	)
 
-	date.From, err = time.Parse("2006-01-02", string(row.GetStringBytes("from")))
-
+	date.From, err = time.Parse("2006-01-02", row.Get(_dateFrom).String())
 	if err != nil {
-		return nil, wrapParseErr(err)
+		return nil, newParseErr(err)
 	}
 
-	date.Till, err = time.Parse("2006-01-02", string(row.GetStringBytes("till")))
-
+	date.Till, err = time.Parse("2006-01-02", row.Get(_dateTill).String())
 	if err != nil {
-		return nil, wrapParseErr(err)
+		return nil, newParseErr(err)
 	}
 
 	return date, nil
@@ -38,8 +41,8 @@ func dateConverter(row *fastjson.Value) (interface{}, error) {
 // MarketDates получает таблицу с диапазоном дат с доступными данными для данного рынка.
 //
 // Описание запроса - https://iss.moex.com/iss/reference/83
-func (iss ISSClient) MarketDates(ctx context.Context, engine, market string) (table []Date, err error) {
-	query := issQuery{
+func (iss *ISSClient) MarketDates(ctx context.Context, engine, market string) (table []Date, err error) {
+	query := querySettings{
 		history:      true,
 		engine:       engine,
 		market:       market,
@@ -48,18 +51,27 @@ func (iss ISSClient) MarketDates(ctx context.Context, engine, market string) (ta
 		rowConverter: dateConverter,
 	}
 
-	rows, errors := iss.getRowsGen(ctx, &query)
-
-	for row := range rows {
-		table = append(table, row.(Date))
-	}
-
-	if err := <-errors; err != nil {
-		return nil, err
+	for raw := range iss.getRowsGen(ctx, query.Make()) {
+		switch row := raw.(type) {
+		case Date:
+			table = append(table, row)
+		case error:
+			return nil, row
+		}
 	}
 
 	return table, nil
 }
+
+const (
+	_quoteDate   = `TRADEDATE`
+	_quoteOpen   = `OPEN`
+	_quoteClose  = `CLOSE`
+	_quoteHigh   = `HIGH`
+	_quoteLow    = `LOW`
+	_quoteValue  = `VALUE`
+	_quoteVolume = `VOLUME`
+)
 
 // Quote представляет исторические дневные котировки в формате OCHL + объем торгов в деньгах и штуках.
 type Quote struct {
@@ -72,66 +84,31 @@ type Quote struct {
 	Volume int
 }
 
-func convertToNanFloat(value *fastjson.Value) (float64, error) {
-	if value.Type() == fastjson.TypeNull {
-		return math.NaN(), nil
+func convertToNanFloat(value gjson.Result) float64 {
+	if value.Type == gjson.Null {
+		return math.NaN()
 	}
 
-	v, err := value.Float64()
-	if err != nil {
-		return 0, wrapParseErr(err)
-	}
-
-	return v, nil
+	return value.Float()
 }
 
-func quoteConverter(row *fastjson.Value) (interface{}, error) {
+func quoteConverter(row gjson.Result) (interface{}, error) {
 	var (
-		quote = Quote{}
+		quote Quote
 		err   error
 	)
 
-	quote.Date, err = time.Parse("2006-01-02", string(row.GetStringBytes("TRADEDATE")))
-
+	quote.Date, err = time.Parse("2006-01-02", row.Get(_quoteDate).String())
 	if err != nil {
-		return nil, wrapParseErr(err)
+		return nil, newParseErr(err)
 	}
 
-	quote.Open, err = convertToNanFloat(row.Get("OPEN"))
-
-	if err != nil {
-		return nil, wrapParseErr(err)
-	}
-
-	quote.Close, err = convertToNanFloat(row.Get("CLOSE"))
-
-	if err != nil {
-		return nil, wrapParseErr(err)
-	}
-
-	quote.High, err = convertToNanFloat(row.Get("HIGH"))
-
-	if err != nil {
-		return nil, wrapParseErr(err)
-	}
-
-	quote.Low, err = convertToNanFloat(row.Get("LOW"))
-
-	if err != nil {
-		return nil, wrapParseErr(err)
-	}
-
-	quote.Value, err = row.Get("VALUE").Float64()
-
-	if err != nil {
-		return nil, wrapParseErr(err)
-	}
-
-	quote.Volume, err = row.Get("VOLUME").Int()
-
-	if err != nil {
-		return nil, wrapParseErr(err)
-	}
+	quote.Open = convertToNanFloat(row.Get(_quoteOpen))
+	quote.Close = convertToNanFloat(row.Get(_quoteClose))
+	quote.High = convertToNanFloat(row.Get(_quoteHigh))
+	quote.Low = convertToNanFloat(row.Get(_quoteLow))
+	quote.Value = row.Get(_quoteValue).Float()
+	quote.Volume = int(row.Get(_quoteVolume).Int())
 
 	return quote, nil
 }
@@ -142,8 +119,15 @@ func quoteConverter(row *fastjson.Value) (interface{}, error) {
 // Даты в формате YYYY-MM-DD или пустая строка для получения информации с начала или до конца доступного интервала дат.
 //
 // Описание запроса - https://iss.moex.com/iss/reference/63
-func (iss ISSClient) MarketHistory(ctx context.Context, engine, market, security, from, till string) (table []Quote, err error) {
-	query := issQuery{
+func (iss *ISSClient) MarketHistory(
+	ctx context.Context,
+	engine,
+	market,
+	security,
+	from,
+	till string,
+) (table []Quote, err error) {
+	query := querySettings{
 		history:      true,
 		engine:       engine,
 		market:       market,
@@ -155,14 +139,13 @@ func (iss ISSClient) MarketHistory(ctx context.Context, engine, market, security
 		rowConverter: quoteConverter,
 	}
 
-	rows, errors := iss.getRowsGen(ctx, &query)
-
-	for row := range rows {
-		table = append(table, row.(Quote))
-	}
-
-	if err := <-errors; err != nil {
-		return nil, err
+	for raw := range iss.getRowsGen(ctx, query.Make()) {
+		switch row := raw.(type) {
+		case Quote:
+			table = append(table, row)
+		case error:
+			return nil, row
+		}
 	}
 
 	return table, nil
