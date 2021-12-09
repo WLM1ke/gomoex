@@ -110,7 +110,7 @@ func sendTable(json []byte, query issQuery, out chan<- interface{}) issQuery {
 	total := results[3]
 
 	if !table.IsArray() {
-		query.err = newErrWithMsg(fmt.Sprintf("can't find tableName %s", query.table))
+		query.err = newErrWithMsg(fmt.Sprintf("can't find table %s", query.table))
 
 		return query
 	}
