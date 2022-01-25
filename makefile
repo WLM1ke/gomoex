@@ -14,8 +14,7 @@ lint:
     --disable paralleltest \
     --disable exhaustivestruct
 test:
-	make lint
 	go get -u -t -v ./...
 	go mod tidy -v
-	# malloc bug on MacOS with race detector
-	export MallocNanoZone=0;go test -v -covermode=atomic -race ./...
+	make lint
+	go test -v -covermode=atomic -race ./...
