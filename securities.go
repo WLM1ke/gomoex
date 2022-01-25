@@ -11,12 +11,14 @@ type Security struct {
 	Ticker  string
 	LotSize int
 	ISIN    string
+	Type    string
 }
 
 const (
 	_securitySECID   = `SECID`
 	_securityLotSize = `LOTSIZE`
 	_securityISIN    = `ISIN`
+	_securityType    = `SECTYPE`
 )
 
 func securityConverter(row gjson.Result) (interface{}, error) {
@@ -25,6 +27,7 @@ func securityConverter(row gjson.Result) (interface{}, error) {
 	sec.Ticker = row.Get(_securitySECID).String()
 	sec.LotSize = int(row.Get(_securityLotSize).Int())
 	sec.ISIN = row.Get(_securityISIN).String()
+	sec.Type = row.Get(_securityType).String()
 
 	return sec, nil
 }

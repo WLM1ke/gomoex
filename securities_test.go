@@ -14,6 +14,7 @@ func TestBoardSecurities(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Greater(t, len(sec), 250)
 	assert.Equal(t, sec[0].Ticker, "ABRD")
-	assert.Equal(t, sec[100].LotSize, 10000)
+	assert.Equal(t, sec[1].LotSize, 100)
+	assert.Equal(t, sec[14].Type, "2")
 	assert.Equal(t, sec[len(sec)-1].ISIN, "RU0009091300")
 }
