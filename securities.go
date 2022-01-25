@@ -8,17 +8,21 @@ import (
 
 // Security содержит информацию о ценной бумаге.
 type Security struct {
-	Ticker  string
-	LotSize int
-	ISIN    string
-	Type    string
+	Ticker     string
+	LotSize    int
+	ISIN       string
+	Board      string
+	Type       string
+	Instrument string
 }
 
 const (
-	_securitySECID   = `SECID`
-	_securityLotSize = `LOTSIZE`
-	_securityISIN    = `ISIN`
-	_securityType    = `SECTYPE`
+	_securitySECID      = `SECID`
+	_securityLotSize    = `LOTSIZE`
+	_securityISIN       = `ISIN`
+	_securityBoard      = `BOARDID`
+	_securityType       = `SECTYPE`
+	_securityInstrument = `INSTRID`
 )
 
 func securityConverter(row gjson.Result) (interface{}, error) {
@@ -27,7 +31,9 @@ func securityConverter(row gjson.Result) (interface{}, error) {
 	sec.Ticker = row.Get(_securitySECID).String()
 	sec.LotSize = int(row.Get(_securityLotSize).Int())
 	sec.ISIN = row.Get(_securityISIN).String()
+	sec.Board = row.Get(_securityBoard).String()
 	sec.Type = row.Get(_securityType).String()
+	sec.Instrument = row.Get(_securityInstrument).String()
 
 	return sec, nil
 }
